@@ -2,8 +2,8 @@
 
 Every backend, the recorder, and training code imports from here. Nothing in
 this file imports from elsewhere in the project. Changing it can silently
-invalidate every dataset recorded so far — see the schema-change skill
-before editing.
+invalidate every dataset recorded so far — grep for usages and log the
+change in docs/decisions.md before editing.
 """
 
 from __future__ import annotations
@@ -53,9 +53,7 @@ def validate_action(action) -> None:
         raise ValueError(f"action dtype {arr.dtype} is not numeric")
     gripper = float(arr[-1])
     if not (GRIPPER_MIN <= gripper <= GRIPPER_MAX):
-        raise ValueError(
-            f"gripper value {gripper} outside [{GRIPPER_MIN}, {GRIPPER_MAX}]"
-        )
+        raise ValueError(f"gripper value {gripper} outside [{GRIPPER_MIN}, {GRIPPER_MAX}]")
 
 
 def validate_observation(obs: dict) -> None:

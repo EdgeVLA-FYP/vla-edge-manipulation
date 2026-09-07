@@ -10,10 +10,9 @@ dependencies = [
 
 [project.optional-dependencies]
 sim = ["mujoco"]
-dev = ["pytest"]
-# lerobot itself is installed separately per lerobot/CLAUDE.md's conda env
-# instructions (editable install with [smolvla,training,core_scripts] extras)
-# — not duplicated here to avoid a second, drifting install path.
+dev = ["pytest", "ruff", "mypy", "pre-commit"]
+# lerobot is added here only once actually needed (dataset/policy/training
+# work) — see CLAUDE.md's dependency philosophy.
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -24,3 +23,13 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+files = ["src"]
+ignore_missing_imports = true

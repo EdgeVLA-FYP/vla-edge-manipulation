@@ -18,13 +18,12 @@ Final Year Project.
 
 ## Setup
 
-## Local environment
-
-Conda env `lerobot` (Python 3.12), created via:
+Conda env `vla-edge` (Python 3.12), created via:
 ```bash
-conda create -y -n lerobot python=3.12
-conda activate lerobot
-uv pip install --python "$CONDA_PREFIX/bin/python" -e ".[dev]"
+conda create -y -n vla-edge python=3.12
+conda activate vla-edge
+uv pip install -e ".[dev,sim]"
+pre-commit install
 pytest tests/ -v
 ```
 

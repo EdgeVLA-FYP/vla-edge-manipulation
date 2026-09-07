@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from vla_edge_manipulation.backends.mock import MockBackend
-from vla_edge_manipulation.schema import validate_action, validate_observation
+from vla_edge_manipulation.schema import validate_observation
 
 BACKEND_FACTORIES = {
     "mock": lambda: MockBackend(seed=0),
