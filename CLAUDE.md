@@ -13,6 +13,7 @@ This file is project-wide context for anyone (or any agent) working in this repo
 5. **Keep every PR scoped to one task.** Only the implementation that task actually needs — no unrelated fixes, refactors, or "while I'm here" additions. If something else is needed, open a follow-up PR.
 6. **Every PR should be production-grade: clean and elegant, no dead, duplicate, or redundant code.** Comments and docstrings only where genuinely non-obvious, and kept short and informational — no verbose explanations, reasonings, no restating what the code already says.
 7. **Install dependencies when the work in front of you actually needs them, not upfront.** — this has already saved real time on this project.
+8. **Test infrastructure is shared, not duplicated.** Reuse/extend existing fixtures and factories (e.g. `test_backends.py`'s `BACKEND_FACTORIES` conformance pattern) instead of copy-pasting setup per file; put anything more than one file needs in `tests/conftest.py`; parametrize near-identical cases instead of writing them out repeatedly. Write tests that catch real regressions, root causes, and edge cases (schema mismatches, race conditions between concurrent calls) — not exhaustive trivial coverage. Test code follows the same rule 6 bar: clean, elegant, no unnecessary lines.
 
 ## Repo layout
 
