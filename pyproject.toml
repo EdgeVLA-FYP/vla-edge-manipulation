@@ -1,0 +1,26 @@
+[project]
+name = "vla-edge-manipulation"
+version = "0.1.0"
+description = "VLA model on an SO-101 arm, deployed to a Jetson Orin Nano — FYP"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+sim = ["mujoco"]
+dev = ["pytest"]
+# lerobot itself is installed separately per lerobot/CLAUDE.md's conda env
+# instructions (editable install with [smolvla,training,core_scripts] extras)
+# — not duplicated here to avoid a second, drifting install path.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

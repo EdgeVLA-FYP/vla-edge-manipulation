@@ -1,0 +1,6 @@
+# Copy to cameras.yaml (gitignored) and adjust per machine.
+resolution: [640, 480]
+fps: 30
+auto_exposure: false
+autofocus: false
+white_balance: false
