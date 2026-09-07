@@ -1,6 +1,6 @@
 # vla-edge-manipulation
 
-Vision-Language-Action model (SmolVLA) driving an SO-101 arm, developed
+Vision-Language-Action model (VLA) driving an SO-101 arm, developed
 against a MuJoCo simulation and deployed to an NVIDIA Jetson Orin Nano.
 Final Year Project.
 
@@ -15,16 +15,15 @@ Final Year Project.
 - `tests/` — schema and backend conformance tests.
 - `docs/decisions.md`, `docs/experiments.md`, `docs/sessions.md` —
   append-only logs.
-- `.claude/skills/` — Claude Code skills for recurring project actions
-  (recording a dataset, changing the schema, adding a backend, training,
-  evaluation, Jetson benchmarking).
 
 ## Setup
 
-Uses the `lerobot` conda env described in the parent FYP `CLAUDE.md`. From
-this repo:
+## Local environment
 
+Conda env `lerobot` (Python 3.12), created via:
 ```bash
+conda create -y -n lerobot python=3.12
+conda activate lerobot
 conda activate lerobot
 uv pip install --python "$CONDA_PREFIX/bin/python" -e ".[dev]"
 pytest tests/ -v
