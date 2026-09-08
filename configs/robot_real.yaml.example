@@ -1,0 +1,7 @@
+# Copy to robot_real.yaml (gitignored) and adjust per machine.
+serial_port: /dev/ttyACM0
+robot_id: so101_follower
+calibration_file: ~/.cache/huggingface/lerobot/calibration/so101.json
+camera_indices:
+  front: 0
+  wrist: 1

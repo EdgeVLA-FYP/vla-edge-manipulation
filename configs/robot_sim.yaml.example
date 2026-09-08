@@ -1,0 +1,7 @@
+# Copy to robot_sim.yaml (gitignored) and adjust per machine.
+scene_path: assets/robotstudio_so101/so101.xml
+physics_timestep: 0.002
+render_width: 640
+render_height: 480
+randomization:
+  cube_area_cm: [20, 20] # published SO-101 work default
