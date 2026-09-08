@@ -4,15 +4,12 @@ version = "0.1.0"
 description = "VLA model on an SO-101 arm, deployed to a Jetson Orin Nano — FYP"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "pyyaml",
+    "numpy"
 ]
 
 [project.optional-dependencies]
 sim = ["mujoco"]
 dev = ["pytest", "ruff", "mypy", "pre-commit"]
-# lerobot is added here only once actually needed (dataset/policy/training
-# work) — see CLAUDE.md's dependency philosophy.
 
 [build-system]
 requires = ["setuptools>=68"]

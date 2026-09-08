@@ -22,7 +22,7 @@ Conda env `vla-edge` (Python 3.12), created via:
 ```bash
 conda create -y -n vla-edge python=3.12
 conda activate vla-edge
-uv pip install -e ".[dev,sim]"
+uv pip install -e ".[dev]"  # add `sim` once doing MuJoCo work
 pre-commit install
 pytest tests/ -v
 ```
