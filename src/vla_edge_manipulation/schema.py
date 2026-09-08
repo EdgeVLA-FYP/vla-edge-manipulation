@@ -19,8 +19,8 @@ JOINT_NAMES = [
     "gripper",
 ]
 
-ACTION_DIM = 6
-STATE_DIM = 6
+ACTION_DIM = len(JOINT_NAMES)
+STATE_DIM = len(JOINT_NAMES)
 FPS = 30
 
 CAMERA_KEYS = ["front", "wrist"]
