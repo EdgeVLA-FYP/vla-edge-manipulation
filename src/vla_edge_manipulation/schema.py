@@ -34,10 +34,6 @@ ACTION_KEY = "action"
 GRIPPER_MIN = 0.0
 GRIPPER_MAX = 100.0
 
-# Placeholder task — change via config for a new task, not by editing this
-# constant's usages elsewhere. See configs/task_pickcube.yaml.example.
-TASK_TEXT = "Pick up the red cube and place it in the blue box"
-
 
 def image_key(camera: str) -> str:
     if camera not in CAMERA_KEYS:
