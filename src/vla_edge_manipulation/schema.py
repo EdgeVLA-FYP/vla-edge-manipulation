@@ -62,6 +62,8 @@ def validate_observation(obs: dict) -> None:
     state = np.asarray(obs[OBS_STATE_KEY])
     if state.shape != (STATE_DIM,):
         raise ValueError(f"state shape {state.shape} != ({STATE_DIM},)")
+    if state.dtype.kind not in "fi":
+        raise ValueError(f"state dtype {state.dtype} is not numeric")
 
     for camera in CAMERA_KEYS:
         key = image_key(camera)

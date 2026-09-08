@@ -62,6 +62,13 @@ def test_observation_wrong_image_shape_raises():
         validate_observation(obs)
 
 
+def test_observation_non_numeric_state_raises():
+    obs = _valid_observation()
+    obs[OBS_STATE_KEY] = np.array(["a", "b", "c", "d", "e", "f"])
+    with pytest.raises(ValueError):
+        validate_observation(obs)
+
+
 def test_image_key_unknown_camera_raises():
     with pytest.raises(ValueError):
         image_key("nonexistent_camera")
