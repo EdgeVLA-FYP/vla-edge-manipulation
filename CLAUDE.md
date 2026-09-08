@@ -28,7 +28,8 @@ src/vla_edge_manipulation/
 configs/              *.yaml.example templates; real *.yaml is gitignored
 tests/                 schema validation + backend conformance tests
 docs/
-  decisions.md         append-only decision log — the schema/architecture source of truth as it evolves
+  ARCHITECTURE.md      current system design — living doc, edited in place as it evolves
+  decisions.md         append-only decision log — the dated *why* behind changes
   experiments.md       append-only checkpoint/training-run registry
   sessions.md          append-only dataset-recording session log
 ```
@@ -51,4 +52,4 @@ Each contributor's machine may differ; don't assume a specific OS/GPU. What shou
 
 ## Where things actually stand
 
-This file deliberately doesn't say "we are on Phase N." For the current state of the project, what's been decided and why, and what's next, read (in this order): `docs/decisions.md` (architectural/schema decisions, most recent last), `docs/experiments.md` / `docs/sessions.md` (what's actually been run), then open PRs/issues on `EdgeVLA-FYP/vla-edge-manipulation`.
+This file deliberately doesn't say "we are on Phase N." For the current state of the project, read (in this order): `docs/ARCHITECTURE.md` (current system design), `docs/decisions.md` (the dated *why* behind changes, most recent last), `docs/experiments.md` / `docs/sessions.md` (what's actually been run), then open PRs/issues on `EdgeVLA-FYP/vla-edge-manipulation`.
