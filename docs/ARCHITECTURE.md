@@ -20,8 +20,8 @@ If a change requires touching anything outside `backends/` to make sim and real 
 
 ## Current state
 
-- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`.
-- **Not yet**: `backends/sim.py` (MuJoCo), `backends/real.py` (SO-101 hardware), dataset recording, training, evaluation, config-loading code.
+- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101).
+- **Not yet**: `backends/real.py` (SO-101 hardware), dataset recording, training, evaluation.
 
 ## Key decisions already reflected in code
 
@@ -29,6 +29,8 @@ If a change requires touching anything outside `backends/` to make sim and real 
 - Task instruction/definition lives in `configs/task_*.yaml`, not `schema.py` — schema is I/O shape and units only, never task-specific.
 - `MockBackend` shipped before any real backend, so recording/eval/training code can be built and tested with zero hardware or simulator dependency.
 - Gripper convention fixed once (LeRobot: 0 = closed, 100 = open) rather than left to each backend to decide.
+- Arm-joint state/action values are in radians (MuJoCo's native unit) — `backends/sim.py` is the first backend, so it set this; `backends/real.py` must convert to it, not the other way around. See `docs/decisions.md`.
+- Sim scene/meshes for the SO-101 are vendored under `assets/robotstudio_so101/` rather than fetched at setup time, so a clone is immediately test-ready with no network step in CI. See that directory's `NOTICE.md` for source/license and `docs/decisions.md` for why.
 
 ## Deliberately not built yet
 

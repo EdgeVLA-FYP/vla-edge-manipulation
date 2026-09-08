@@ -8,8 +8,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-sim = ["mujoco"]
-dev = ["pytest", "ruff", "mypy", "pre-commit"]
+sim = ["mujoco", "pyyaml"]
+dev = ["pytest", "ruff", "mypy", "pre-commit", "types-pyyaml"]
 
 [build-system]
 requires = ["setuptools>=68"]
