@@ -18,13 +18,10 @@ needed and are not vendored.
 
 - `so101_new_calib_camera.xml`: `<compiler meshdir>` changed from `assets`
   to `meshes` to match this directory's layout. Added a `<camera name="wrist">`
-  element inside the `wrist_camera` body — upstream models the camera's
-  physical housing but does not itself define a MuJoCo camera sensor. The
-  mesh doesn't expose which face is the lens, so the mount pose was chosen
-  empirically (rendered all 6 axis-aligned candidates, picked the one that
-  frames the gripper) — treat it as a best-effort default, not a verified
-  optical calibration. Re-check against the real wrist camera once hardware
-  arrives.
+  inside the `wrist_camera` body — upstream models the camera housing but
+  not a MuJoCo camera sensor. Mount pose chosen empirically (best framing of
+  6 axis-aligned candidates), not a verified optical calibration — re-check
+  against the real wrist camera once hardware arrives.
 - `meshes/*.stl`: unmodified.
 
 ## Not vendored from upstream
