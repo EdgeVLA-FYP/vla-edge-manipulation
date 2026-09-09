@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 pytest.importorskip("mujoco")
+pytest.importorskip("yaml")
 
 from vla_edge_manipulation.backends.sim import MuJoCoBackend  # noqa: E402
 from vla_edge_manipulation.schema import GRIPPER_MAX, GRIPPER_MIN, JOINT_NAMES  # noqa: E402
@@ -27,13 +28,24 @@ def _settle(backend, action, steps=60):
 
 
 def test_gripper_min_is_closed_and_max_is_open(backend):
+    # Asserts on the raw MuJoCo joint value, not just the schema-space
+    # round-trip: _schema_to_joint_gripper/_joint_to_schema_gripper are exact
+    # inverses, so a mapping that flips direction in both consistently would
+    # still pass a schema-only check while driving the physical joint backwards.
+    lo, hi = backend._joint_range[-1]
+    gripper_qpos_adr = backend._qpos_adr[-1]
+
     closed = np.zeros(len(JOINT_NAMES), dtype=np.float32)
     closed[-1] = GRIPPER_MIN
+    obs = _settle(backend, closed)
+    assert obs["observation.state"][-1] == pytest.approx(GRIPPER_MIN, abs=1.0)
+    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(hi, abs=0.05)
+
     opened = np.zeros(len(JOINT_NAMES), dtype=np.float32)
     opened[-1] = GRIPPER_MAX
-
-    assert _settle(backend, closed)["observation.state"][-1] == pytest.approx(GRIPPER_MIN, abs=1.0)
-    assert _settle(backend, opened)["observation.state"][-1] == pytest.approx(GRIPPER_MAX, abs=1.0)
+    obs = _settle(backend, opened)
+    assert obs["observation.state"][-1] == pytest.approx(GRIPPER_MAX, abs=1.0)
+    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(lo, abs=0.05)
 
 
 def test_arm_joints_track_commanded_radians_in_order(backend):

@@ -49,7 +49,10 @@ def _load_config(path: Path) -> dict[str, Any]:
             f"{path} not found — copy {example.name} to {path.name} and adjust it"
         )
     with path.open() as f:
-        return yaml.safe_load(f)
+        config = yaml.safe_load(f)
+    if not isinstance(config, dict):
+        raise ValueError(f"{path}: expected a YAML mapping, got {type(config).__name__}")
+    return config
 
 
 class MuJoCoBackend(RobotBackend):
