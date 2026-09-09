@@ -25,9 +25,7 @@ class RobotBackend(ABC):
 
     @abstractmethod
     def reset_to_home(self) -> None:
-        """Call between episodes. Resets the arm; a backend with sim-only task
-        objects (e.g. a randomized cube) may also reset those — for a real
-        backend, the equivalent is a human physically resetting the workspace."""
+        """Call between episodes. Resets the arm."""
 
     @abstractmethod
     def disconnect(self) -> None: ...

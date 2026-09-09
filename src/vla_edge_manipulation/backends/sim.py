@@ -40,50 +40,38 @@ def _default_config_path() -> Path:
     return _repo_root() / "configs" / "robot_sim.yaml"
 
 
-# Nested value = required sub-keys; None = leaf. Single source of truth for
-# what robot_sim.yaml must contain, so a stale (pre-workspace-block) file
-# fails with an actionable message instead of a raw KeyError deep in connect().
-_REQUIRED_CONFIG_KEYS: dict[str, Any] = {
-    "scene_path": None,
-    "physics_timestep": None,
-    "render_width": None,
-    "render_height": None,
-    "randomization": {"cube_area_cm": None},
-    "workspace": {
-        "table_color": None,
-        "table_friction": None,
-        "cube_size_cm": None,
-        "cube_color": None,
-        "cube_friction": None,
-        "bin_color": None,
-        "front_camera_pos": None,
-    },
-}
-
-
 def _check_required_keys(
     config: dict[str, Any], required: dict[str, Any], path: Path, prefix: str = ""
 ) -> None:
-    for key, nested in required.items():
+    """Recursively checks config has every key `required` (the parsed
+    *.yaml.example) declares — that template is already the single source of
+    truth for the expected shape, so there's nothing else to keep in sync."""
+    for key, example_value in required.items():
         full_key = f"{prefix}{key}"
         if key not in config:
             example = path.with_suffix(".yaml.example")
             raise KeyError(f"{path}: missing {full_key!r} — see {example.name} for all fields")
-        if nested is not None:
-            _check_required_keys(config[key], nested, path, prefix=f"{full_key}.")
+        if isinstance(example_value, dict):
+            _check_required_keys(config[key], example_value, path, prefix=f"{full_key}.")
 
 
 def _load_config(path: Path) -> dict[str, Any]:
+    # The canonical template, regardless of where `path` itself lives (the
+    # default location, or a custom/test config elsewhere) — there is only
+    # ever one schema for this config type.
+    example_path = _repo_root() / "configs" / "robot_sim.yaml.example"
     if not path.exists():
-        example = path.with_suffix(".yaml.example")
         raise FileNotFoundError(
-            f"{path} not found — copy {example.name} to {path.name} and adjust it"
+            f"{path} not found — copy {example_path.name} to {path.name} and adjust it"
         )
     with path.open() as f:
         config = yaml.safe_load(f)
     if not isinstance(config, dict):
         raise ValueError(f"{path}: expected a YAML mapping, got {type(config).__name__}")
-    _check_required_keys(config, _REQUIRED_CONFIG_KEYS, path)
+
+    with example_path.open() as f:
+        example_config = yaml.safe_load(f)
+    _check_required_keys(config, example_config, path)
     return config
 
 
