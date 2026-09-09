@@ -31,8 +31,6 @@ from vla_edge_manipulation.schema import (
     validate_action,
 )
 
-_ARM_JOINT_NAMES = JOINT_NAMES[:-1]  # JOINT_NAMES[-1] is the gripper, per schema.py
-
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
@@ -143,7 +141,7 @@ class MuJoCoBackend(RobotBackend):
         if bad.any():
             i = int(np.flatnonzero(bad)[0])
             raise ValueError(
-                f"action[{i}] ({_ARM_JOINT_NAMES[i]}={arm_values[i]:.4f} rad) outside "
+                f"action[{i}] ({JOINT_NAMES[i]}={arm_values[i]:.4f} rad) outside "
                 f"joint range [{lo[i]:.4f}, {hi[i]:.4f}]"
             )
 
