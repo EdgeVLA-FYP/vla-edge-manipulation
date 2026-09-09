@@ -3,14 +3,21 @@ suite in test_backends.py: gripper direction and joint ordering are the two
 things a scene/calibration swap could silently invert.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 pytest.importorskip("mujoco")
 pytest.importorskip("yaml")
 
+import mujoco  # noqa: E402
+import yaml  # noqa: E402
+
 from vla_edge_manipulation.backends.sim import MuJoCoBackend  # noqa: E402
 from vla_edge_manipulation.schema import GRIPPER_MAX, GRIPPER_MIN, JOINT_NAMES  # noqa: E402
+
+_CONFIG_EXAMPLE = Path(__file__).resolve().parents[1] / "configs" / "robot_sim.yaml.example"
 
 
 @pytest.fixture
@@ -81,3 +88,42 @@ def test_methods_reject_calls_after_disconnect():
         b.send_action(action)
     with pytest.raises(RuntimeError):
         b.reset_to_home()
+
+
+def test_reset_to_home_randomizes_cube_within_configured_area(backend):
+    positions = []
+    for _ in range(5):
+        backend.reset_to_home()
+        adr = backend._cube_qpos_adr
+        positions.append(backend._data.qpos[adr : adr + 2].copy())
+    positions = np.array(positions)
+
+    lo = backend._cube_home_center - backend._cube_area_half_extent
+    hi = backend._cube_home_center + backend._cube_area_half_extent
+    assert np.all((positions >= lo) & (positions <= hi))
+    assert not np.allclose(positions[0], positions[1])
+
+
+def test_same_seed_reproduces_cube_placement():
+    def cube_xy_after_connect(seed):
+        b = MuJoCoBackend(seed=seed)
+        b.connect()
+        adr = b._cube_qpos_adr
+        xy = b._data.qpos[adr : adr + 2].copy()
+        b.disconnect()
+        return xy
+
+    np.testing.assert_allclose(cube_xy_after_connect(7), cube_xy_after_connect(7))
+
+
+def test_workspace_config_override_changes_cube_size(tmp_path):
+    config = yaml.safe_load(_CONFIG_EXAMPLE.read_text())
+    config["workspace"]["cube_size_cm"] = 4.0  # default is 2.0 — must actually differ
+    config_path = tmp_path / "robot_sim.yaml"
+    config_path.write_text(yaml.dump(config))
+
+    b = MuJoCoBackend(config_path=config_path)
+    b.connect()
+    cube_geom = mujoco.mj_name2id(b._model, mujoco.mjtObj.mjOBJ_GEOM, "cube")
+    np.testing.assert_allclose(b._model.geom_size[cube_geom], [0.02, 0.02, 0.02])
+    b.disconnect()

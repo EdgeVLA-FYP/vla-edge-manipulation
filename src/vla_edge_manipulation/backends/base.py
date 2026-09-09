@@ -24,7 +24,10 @@ class RobotBackend(ABC):
         """Accepts an array matching schema.validate_action()."""
 
     @abstractmethod
-    def reset_to_home(self) -> None: ...
+    def reset_to_home(self) -> None:
+        """Call between episodes. Resets the arm; a backend with sim-only task
+        objects (e.g. a randomized cube) may also reset those — for a real
+        backend, the equivalent is a human physically resetting the workspace."""
 
     @abstractmethod
     def disconnect(self) -> None: ...

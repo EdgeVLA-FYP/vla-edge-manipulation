@@ -76,3 +76,25 @@ Also reworked the `front` camera: the previous framing (from the sim
 backend PR, before task objects existed) pointed at an empty floor and is
 now fully occluded by the arm's own body once the cube/bin are in the
 scene. Repositioned as a look-at camera aimed at the workspace midpoint.
+
+## 2026-09-09 — Workspace built as a "digital twin, standard-case defaults" — not matched to real hardware yet
+
+No real hardware exists to measure yet, so the workspace (table colour,
+cube size/colour, bin colour, front camera mount) uses plausible common-case
+values instead of guessed-but-unlabeled ones, with every one of those
+values overridable from `configs/robot_sim.yaml`'s new `workspace:` block —
+applied by `MuJoCoBackend.connect()` onto the loaded model (same mechanism
+already used for `physics_timestep`), not by hand-editing `so101.xml`. When
+real hardware exists, recalibrating is a config edit, not a scene rebuild.
+Table's checker-pattern debug texture replaced with a plain overridable
+colour for the same reason — it was never meant to represent anything real.
+
+**Supersedes** part of the previous entry: cube-position randomization is
+no longer the recording script's job. It now lives in
+`MuJoCoBackend.reset_to_home()` itself — sim resets the cube to a fresh
+random position within `cube_area_cm` (centered on the gripper's home XY)
+every time it's called, alongside resetting the arm. Kept out of the shared
+`RobotBackend` interface (rule 2: no sim/real branching above the backend
+layer) — for a real backend, `reset_to_home()`'s equivalent "workspace
+reset" is a human physically moving the cube, which needs no code at all.
+`MuJoCoBackend` also now takes an optional `seed` for reproducible episodes.
