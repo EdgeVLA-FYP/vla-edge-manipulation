@@ -98,3 +98,31 @@ every time it's called, alongside resetting the arm. Kept out of the shared
 layer) — for a real backend, `reset_to_home()`'s equivalent "workspace
 reset" is a human physically moving the cube, which needs no code at all.
 `MuJoCoBackend` also now takes an optional `seed` for reproducible episodes.
+
+## 2026-09-09 — Five real bugs found by review, all fixed and regression-tested
+
+A `/code-review high` pass on this PR (run against the live scene, not just
+the diff) found five genuine issues, none cosmetic:
+
+- `_lookat_quat` divided by zero (silent NaN, no exception) for a straight
+  down/up camera mount — a legitimate real config, not an edge case. Fixed
+  with a fallback reference axis; verified the failure first (NaN quaternion,
+  `mj_forward`/`render()` both succeed anyway, camera silently outputs a
+  single flat colour — the worst kind of failure, no error anywhere).
+- The cube spawn region (centered on the *live* gripper xpos) was never
+  checked against the bin footprint — widening `cube_area_cm` enough (e.g.
+  to `[60, 60]`) silently overlaps the bin. `connect()` now computes the
+  bin's real footprint from its wall geometry (not a hardcoded number) and
+  raises `ValueError` on overlap.
+- `test_cube_spawn_region_and_bin_do_not_overlap` (previous entry) checked
+  the static XML default, not the real runtime spawn center — renamed to
+  `test_static_xml_...` and clarified as a fallback-defaults sanity check
+  only; the real invariant now has its own test against a connected backend.
+- The table/cube geoms' friction was claimed "runtime-overridable from
+  config" in an `so101.xml` comment that wasn't true — `_apply_workspace_config`
+  never read a friction key. Implemented it for real (`table_friction`/
+  `cube_friction` in `workspace:`) rather than just fixing the comment.
+- Missing/stale config keys (e.g. a `robot_sim.yaml` from before the
+  `workspace:` block existed) raised a raw `KeyError` deep in `connect()`.
+  `_load_config` now validates required keys against a single declared
+  structure and points at `.yaml.example`, matching the missing-file case.

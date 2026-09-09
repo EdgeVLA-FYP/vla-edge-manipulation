@@ -40,6 +40,39 @@ def _default_config_path() -> Path:
     return _repo_root() / "configs" / "robot_sim.yaml"
 
 
+# Nested value = required sub-keys; None = leaf. Single source of truth for
+# what robot_sim.yaml must contain, so a stale (pre-workspace-block) file
+# fails with an actionable message instead of a raw KeyError deep in connect().
+_REQUIRED_CONFIG_KEYS: dict[str, Any] = {
+    "scene_path": None,
+    "physics_timestep": None,
+    "render_width": None,
+    "render_height": None,
+    "randomization": {"cube_area_cm": None},
+    "workspace": {
+        "table_color": None,
+        "table_friction": None,
+        "cube_size_cm": None,
+        "cube_color": None,
+        "cube_friction": None,
+        "bin_color": None,
+        "front_camera_pos": None,
+    },
+}
+
+
+def _check_required_keys(
+    config: dict[str, Any], required: dict[str, Any], path: Path, prefix: str = ""
+) -> None:
+    for key, nested in required.items():
+        full_key = f"{prefix}{key}"
+        if key not in config:
+            example = path.with_suffix(".yaml.example")
+            raise KeyError(f"{path}: missing {full_key!r} — see {example.name} for all fields")
+        if nested is not None:
+            _check_required_keys(config[key], nested, path, prefix=f"{full_key}.")
+
+
 def _load_config(path: Path) -> dict[str, Any]:
     if not path.exists():
         example = path.with_suffix(".yaml.example")
@@ -50,14 +83,22 @@ def _load_config(path: Path) -> dict[str, Any]:
         config = yaml.safe_load(f)
     if not isinstance(config, dict):
         raise ValueError(f"{path}: expected a YAML mapping, got {type(config).__name__}")
+    _check_required_keys(config, _REQUIRED_CONFIG_KEYS, path)
     return config
 
 
 def _lookat_quat(cam_pos: np.ndarray, target: np.ndarray) -> np.ndarray:
-    """Camera orientation (wxyz) looking from cam_pos toward target, world +Z up."""
+    """Camera orientation (wxyz) looking from cam_pos toward target, world +Z up.
+
+    A top-down/bottom-up mount (forward parallel to world +Z) is a legitimate
+    real camera position, not an edge case to reject — cross(forward, +Z) is
+    then the zero vector, so fall back to +X as the reference axis instead of
+    silently dividing by zero into a NaN quaternion.
+    """
     forward = target - cam_pos
     forward /= np.linalg.norm(forward)
-    right = np.cross(forward, (0.0, 0.0, 1.0))
+    world_up = (0.0, 0.0, 1.0) if abs(forward[2]) < 0.999 else (1.0, 0.0, 0.0)
+    right = np.cross(forward, world_up)
     right /= np.linalg.norm(right)
     up = np.cross(right, forward)
     # MuJoCo camera convention: local -Z is the view direction, +Y is up.
@@ -219,15 +260,38 @@ class MuJoCoBackend(RobotBackend):
         cube_geom = self._mj_id(mujoco.mjtObj.mjOBJ_GEOM, "cube", scene_path)
         self._model.geom_size[cube_geom] = [self._cube_half_size] * 3
         self._model.geom_rgba[cube_geom] = [*workspace["cube_color"], 1.0]
+        self._model.geom_friction[cube_geom] = workspace["cube_friction"]
 
         table_geom = self._mj_id(mujoco.mjtObj.mjOBJ_GEOM, "table", scene_path)
         self._model.geom_rgba[table_geom] = [*workspace["table_color"], 1.0]
+        self._model.geom_friction[table_geom] = workspace["table_friction"]
 
         bin_body = self._mj_id(mujoco.mjtObj.mjOBJ_BODY, "bin", scene_path)
         bin_xy = self._model.body_pos[bin_body][:2]
+        wall_geoms = []
         for wall in ("bin_wall_north", "bin_wall_south", "bin_wall_east", "bin_wall_west"):
             geom = self._mj_id(mujoco.mjtObj.mjOBJ_GEOM, wall, scene_path)
             self._model.geom_rgba[geom] = [*workspace["bin_color"], 1.0]
+            wall_geoms.append(geom)
+        # Outer footprint from the actual wall geometry, not a hardcoded number —
+        # stays correct if the bin's dimensions in so101.xml ever change.
+        bin_half_extent = np.max(
+            [
+                np.abs(self._model.geom_pos[g][:2]) + self._model.geom_size[g][:2]
+                for g in wall_geoms
+            ],
+            axis=0,
+        )
+        spawn_lo = self._cube_home_center - self._cube_area_half_extent
+        spawn_hi = self._cube_home_center + self._cube_area_half_extent
+        bin_lo, bin_hi = bin_xy - bin_half_extent, bin_xy + bin_half_extent
+        if np.all(spawn_lo < bin_hi) and np.all(bin_lo < spawn_hi):
+            raise ValueError(
+                f"{self._config_path}: cube spawn region (±{self._cube_area_half_extent} m "
+                f"around {self._cube_home_center}) overlaps the bin footprint "
+                f"(±{bin_half_extent} m around {bin_xy}) — shrink randomization.cube_area_cm "
+                "or move the bin"
+            )
 
         front_cam = self._mj_id(mujoco.mjtObj.mjOBJ_CAMERA, "front", scene_path)
         cam_pos = np.asarray(workspace["front_camera_pos"], dtype=float)
