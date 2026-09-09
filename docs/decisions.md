@@ -54,3 +54,25 @@ NaN in a non-gripper action slot passed both `validate_action()` and
 directly to `schema.py`, not backend-local — a non-finite command is
 invalid for every backend, not just sim, and matters most for real
 hardware. No existing datasets to invalidate.
+
+## 2026-09-09 — Pick-cube task workspace added to the sim scene
+
+Added a 2cm cube (free body) and an open-top blue bin to `so101.xml`, per
+`configs/task_pickcube.yaml.example`'s instruction and
+`success_criteria: cube_center_within_box_bounds`. Cube sits at the center
+of `robot_sim.yaml.example`'s `cube_area_cm` spawn region; per-episode
+randomization within that region is the recording script's job, not baked
+into the static scene.
+
+Cube size is a **first-pass estimate, not a verified fit** — exact
+gripper aperture couldn't be pinned down reliably by mesh geometry (two
+different heuristics gave contradictory results), so it's grounded in a
+physics contact test instead (a real 2cm cube registered 13 contacts when
+the gripper closed on it, with no explosion/NaN) rather than a geometric
+measurement. Actual graspability — and, if needed, resizing — gets proven
+when the scripted pick-place controller is built (next PR).
+
+Also reworked the `front` camera: the previous framing (from the sim
+backend PR, before task objects existed) pointed at an empty floor and is
+now fully occluded by the arm's own body once the cube/bin are in the
+scene. Repositioned as a look-at camera aimed at the workspace midpoint.

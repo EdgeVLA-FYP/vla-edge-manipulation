@@ -31,6 +31,7 @@ If a change requires touching anything outside `backends/` to make sim and real 
 - Gripper convention fixed once (LeRobot: 0 = closed, 100 = open) rather than left to each backend to decide.
 - Arm-joint state/action values are in radians (MuJoCo's native unit), set by `backends/sim.py` as the first backend to ship; `backends/real.py` must convert to it. See `docs/decisions.md`.
 - SO-101 sim scene/meshes are vendored under `assets/robotstudio_so101/`, not fetched at setup — see that directory's `NOTICE.md` and `docs/decisions.md`.
+- The pick-cube task workspace (cube + target bin) lives in `so101.xml` itself, matching `configs/task_pickcube.yaml.example` — not a separate scene variant. Cube size is a first-pass estimate pending validation by the pick-place controller. See `docs/decisions.md`.
 
 ## Deliberately not built yet
 
