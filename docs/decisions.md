@@ -53,3 +53,19 @@ Two unit decisions in `backends/sim.py`, both binding on any future backend:
   `_joint_to_schema_gripper`. Any contributor swapping in a different
   calibration file (e.g. `so101_old_calib.xml`) must re-verify this before
   trusting the gripper in recorded data.
+
+## 2026-09-09 — Sim backend: arm-joint actions validated against physical range, not just clamped
+
+`send_action()` now rejects (raises `ValueError`) an arm-joint value outside
+the model's own `jnt_range`, mirroring the gripper's existing schema-level
+check. Needed because MuJoCo's position actuator only clamps *force*
+(`forcerange`), not the `ctrl` signal itself — an out-of-range target was
+being accepted silently and just creeping toward the joint's hard stop
+instead of erroring, verified empirically (`ctrl` held the raw unclamped
+value after the call). Left unvalidated, a policy bug that predicts an
+out-of-envelope angle would look like it "worked" in sim while silently
+saturating — exactly the kind of divergence that would only surface later as
+a real mechanical stall on hardware. The physical range itself stays
+backend-local (read from `self._model.jnt_range`), not added to
+`schema.py`, for the same reason the gripper's radian range isn't: it's
+specific to this MJCF's calibration, not a project-wide unit contract.

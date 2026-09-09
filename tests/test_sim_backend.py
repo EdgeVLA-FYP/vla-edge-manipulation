@@ -49,3 +49,9 @@ def test_reset_to_home_returns_to_zero_arm_pose(backend):
     backend.reset_to_home()
     state = backend.get_observation()["observation.state"]
     np.testing.assert_allclose(state[:-1], np.zeros(5), atol=1e-6)
+
+
+def test_send_action_out_of_joint_range_raises(backend):
+    action = np.array([999.0, 0.0, 0.0, 0.0, 0.0, 50.0], dtype=np.float32)
+    with pytest.raises(ValueError, match="shoulder_pan"):
+        backend.send_action(action)

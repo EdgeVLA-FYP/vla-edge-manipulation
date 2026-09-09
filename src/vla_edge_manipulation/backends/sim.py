@@ -64,6 +64,7 @@ class MuJoCoBackend(RobotBackend):
         self._n_substeps = 1
         self._arm_qpos_adr = np.zeros(len(_ARM_JOINT_NAMES), dtype=int)
         self._arm_actuator_id = np.zeros(len(_ARM_JOINT_NAMES), dtype=int)
+        self._arm_joint_range = np.zeros((len(_ARM_JOINT_NAMES), 2))
         self._gripper_qpos_adr = 0
         self._gripper_actuator_id = 0
         self._gripper_joint_range = (0.0, 0.0)
@@ -92,6 +93,7 @@ class MuJoCoBackend(RobotBackend):
             self._arm_actuator_id[i] = mujoco.mj_name2id(
                 self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, name
             )
+            self._arm_joint_range[i] = self._model.jnt_range[joint_id]
 
         gripper_joint_id = mujoco.mj_name2id(
             self._model, mujoco.mjtObj.mjOBJ_JOINT, _GRIPPER_JOINT_NAME
@@ -126,6 +128,7 @@ class MuJoCoBackend(RobotBackend):
         assert self._model is not None and self._data is not None, "connect() not called"
         validate_action(action)
         arr = np.asarray(action, dtype=np.float64)
+        self._validate_arm_joint_range(arr[:-1])
         self._data.ctrl[self._arm_actuator_id] = arr[:-1]
         self._data.ctrl[self._gripper_actuator_id] = self._schema_to_joint_gripper(float(arr[-1]))
         for _ in range(self._n_substeps):
@@ -140,6 +143,19 @@ class MuJoCoBackend(RobotBackend):
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
+
+    def _validate_arm_joint_range(self, arm_values: np.ndarray) -> None:
+        # The actuator only clamps *force*, not ctrl — an out-of-range target
+        # would otherwise be accepted silently and just creep to the joint's
+        # hard stop instead of erroring, unlike the gripper's schema check.
+        lo, hi = self._arm_joint_range[:, 0], self._arm_joint_range[:, 1]
+        bad = (arm_values < lo) | (arm_values > hi)
+        if bad.any():
+            i = int(np.flatnonzero(bad)[0])
+            raise ValueError(
+                f"action[{i}] ({_ARM_JOINT_NAMES[i]}={arm_values[i]:.4f} rad) outside "
+                f"joint range [{lo[i]:.4f}, {hi[i]:.4f}]"
+            )
 
     def _schema_to_joint_gripper(self, value: float) -> float:
         lo, hi = self._gripper_joint_range
