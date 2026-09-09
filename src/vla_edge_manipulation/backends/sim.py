@@ -86,10 +86,11 @@ class MuJoCoBackend(RobotBackend):
 
         for i, name in enumerate(JOINT_NAMES):
             joint_id = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_JOINT, name)
+            actuator_id = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, name)
+            if joint_id < 0 or actuator_id < 0:
+                raise ValueError(f"{scene_path}: missing joint or actuator named {name!r}")
             self._qpos_adr[i] = self._model.jnt_qposadr[joint_id]
-            self._actuator_id[i] = mujoco.mj_name2id(
-                self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, name
-            )
+            self._actuator_id[i] = actuator_id
             self._joint_range[i] = self._model.jnt_range[joint_id]
         # Gripper joint (last row): empirically verified (mesh-to-mesh proximity,
         # not assumed) that its *max* is the closed position and its *min* is
@@ -101,7 +102,8 @@ class MuJoCoBackend(RobotBackend):
         mujoco.mj_forward(self._model, self._data)
 
     def get_observation(self) -> dict[str, np.ndarray]:
-        assert self._data is not None and self._renderer is not None, "connect() not called"
+        if self._data is None or self._renderer is None:
+            raise RuntimeError("connect() not called")
         state = np.empty(STATE_DIM, dtype=np.float32)
         state[:-1] = self._data.qpos[self._qpos_adr[:-1]]
         state[-1] = self._joint_to_schema_gripper(self._data.qpos[self._qpos_adr[-1]])
@@ -113,7 +115,8 @@ class MuJoCoBackend(RobotBackend):
         return obs
 
     def send_action(self, action: np.ndarray) -> None:
-        assert self._model is not None and self._data is not None, "connect() not called"
+        if self._model is None or self._data is None:
+            raise RuntimeError("connect() not called")
         validate_action(action)
         arr = np.asarray(action, dtype=np.float64)
         self._validate_arm_joint_range(arr[:-1])
@@ -123,7 +126,8 @@ class MuJoCoBackend(RobotBackend):
             mujoco.mj_step(self._model, self._data)
 
     def reset_to_home(self) -> None:
-        assert self._model is not None and self._data is not None, "connect() not called"
+        if self._model is None or self._data is None:
+            raise RuntimeError("connect() not called")
         mujoco.mj_resetData(self._model, self._data)
         mujoco.mj_forward(self._model, self._data)
 

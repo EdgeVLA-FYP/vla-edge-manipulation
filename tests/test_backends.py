@@ -18,11 +18,16 @@ BACKEND_FACTORIES: dict[str, Callable[[], RobotBackend]] = {
 }
 
 try:
+    import mujoco  # noqa: F401
+    import yaml  # noqa: F401
+except ImportError:
+    pass  # `sim` extra not installed — mock-only conformance still runs
+else:
+    # Outside the try: a real bug in sim.py (not a missing optional
+    # dependency) must fail collection loudly, not silently drop to mock-only.
     from vla_edge_manipulation.backends.sim import MuJoCoBackend
 
     BACKEND_FACTORIES["sim"] = MuJoCoBackend
-except ImportError:
-    pass  # `sim` extra not installed — mock-only conformance still runs
 
 
 @pytest.fixture(params=BACKEND_FACTORIES.keys())
