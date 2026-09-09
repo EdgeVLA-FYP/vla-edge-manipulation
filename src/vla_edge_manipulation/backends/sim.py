@@ -135,6 +135,8 @@ class MuJoCoBackend(RobotBackend):
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
+        self._model = None
+        self._data = None
 
     def _validate_arm_joint_range(self, arm_values: np.ndarray) -> None:
         # The actuator only clamps *force*, not ctrl — an out-of-range target

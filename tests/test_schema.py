@@ -44,6 +44,16 @@ def test_action_gripper_out_of_range_raises():
         validate_action(a)
 
 
+def test_action_non_finite_value_raises():
+    # Not just the gripper slot: NaN there happens to already fail the
+    # GRIPPER_MIN <= x <= GRIPPER_MAX chained comparison, but a non-gripper
+    # slot had no check at all until this.
+    a = _valid_action()
+    a[0] = float("nan")
+    with pytest.raises(ValueError):
+        validate_action(a)
+
+
 def test_valid_observation_passes():
     validate_observation(_valid_observation())
 

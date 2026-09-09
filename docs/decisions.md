@@ -45,3 +45,12 @@ the gripper's existing check. MuJoCo's actuator only clamps *force*, not
 `ctrl` — an out-of-range target was silently accepted and crept to the
 joint's hard stop instead of erroring. Range stays backend-local (read from
 the model), not in `schema.py`, same reasoning as the gripper's radian range.
+
+## 2026-09-09 — schema.py: validate_action rejects non-finite values
+
+NaN in a non-gripper action slot passed both `validate_action()` and
+`sim.py`'s range check (NaN compares False to everything, so neither
+`<`/`>` flagged it) and would have reached MuJoCo's `ctrl` uncaught. Added
+directly to `schema.py`, not backend-local — a non-finite command is
+invalid for every backend, not just sim, and matters most for real
+hardware. No existing datasets to invalidate.

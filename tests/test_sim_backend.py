@@ -67,3 +67,17 @@ def test_send_action_out_of_joint_range_raises(backend):
     action = np.array([999.0, 0.0, 0.0, 0.0, 0.0, 50.0], dtype=np.float32)
     with pytest.raises(ValueError, match="shoulder_pan"):
         backend.send_action(action)
+
+
+def test_methods_reject_calls_after_disconnect():
+    b = MuJoCoBackend()
+    b.connect()
+    b.disconnect()
+
+    action = np.zeros(len(JOINT_NAMES), dtype=np.float32)
+    with pytest.raises(RuntimeError):
+        b.get_observation()
+    with pytest.raises(RuntimeError):
+        b.send_action(action)
+    with pytest.raises(RuntimeError):
+        b.reset_to_home()
