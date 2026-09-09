@@ -14,6 +14,7 @@ This file is project-wide context for anyone (or any agent) working in this repo
 6. **Every PR should be production-grade: clean and elegant, no dead, duplicate, or redundant code.** Comments and docstrings only where genuinely non-obvious, and kept short and informational — no verbose explanations, reasonings, no restating what the code already says.
 7. **Install dependencies when the work in front of you actually needs them, not upfront.** — this has already saved real time on this project.
 8. **Test infrastructure is shared, not duplicated.** Reuse/extend existing fixtures and factories (e.g. `test_backends.py`'s `BACKEND_FACTORIES` conformance pattern) instead of copy-pasting setup per file; put anything more than one file needs in `tests/conftest.py`; parametrize near-identical cases instead of writing them out repeatedly. Write tests that catch real regressions, root causes, and edge cases (schema mismatches, race conditions between concurrent calls) — not exhaustive trivial coverage. Test code follows the same rule 6 bar: clean, elegant, no unnecessary lines.
+9. **Keep documentation concise — verbosity compounds.** Applies to every doc in this repo: `docs/*.md`, `README.md`, per-directory `NOTICE.md`s, this file. Lead with the fact and one line of *why*; point to code or another doc for detail instead of restating it. This matters most for the append-only logs (`decisions.md`, `experiments.md`, `sessions.md`) since they never shrink, but it applies everywhere — a bloated doc is harder for a human to skim and burns real context/tokens for every agent that reads it.
 
 ## Repo layout
 
@@ -23,7 +24,7 @@ src/vla_edge_manipulation/
   backends/
     base.py          RobotBackend interface
     mock.py          fake backend, no hardware/sim required
-    sim.py           (lands with the sim-backend work)
+    sim.py           MuJoCo backend, SO-101
     real.py          (lands once hardware is available)
 configs/              *.yaml.example templates; real *.yaml is gitignored
 tests/                 schema validation + backend conformance tests

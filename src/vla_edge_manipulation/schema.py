@@ -47,6 +47,8 @@ def validate_action(action) -> None:
         raise ValueError(f"action shape {arr.shape} != ({ACTION_DIM},)")
     if arr.dtype.kind not in "fi":
         raise ValueError(f"action dtype {arr.dtype} is not numeric")
+    if not np.all(np.isfinite(arr)):
+        raise ValueError(f"action contains non-finite values: {arr}")
     gripper = float(arr[-1])
     if not (GRIPPER_MIN <= gripper <= GRIPPER_MAX):
         raise ValueError(f"gripper value {gripper} outside [{GRIPPER_MIN}, {GRIPPER_MAX}]")

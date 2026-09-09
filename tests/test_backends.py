@@ -4,15 +4,30 @@ Add a new backend to BACKEND_FACTORIES and it gets the same assertions as
 every other one — that is the point of the shared interface.
 """
 
+from collections.abc import Callable
+
 import numpy as np
 import pytest
 
+from vla_edge_manipulation.backends.base import RobotBackend
 from vla_edge_manipulation.backends.mock import MockBackend
 from vla_edge_manipulation.schema import validate_observation
 
-BACKEND_FACTORIES = {
+BACKEND_FACTORIES: dict[str, Callable[[], RobotBackend]] = {
     "mock": lambda: MockBackend(seed=0),
 }
+
+try:
+    import mujoco  # noqa: F401
+    import yaml  # noqa: F401
+except ImportError:
+    pass  # `sim` extra not installed — mock-only conformance still runs
+else:
+    # Outside the try: a real bug in sim.py (not a missing optional
+    # dependency) must fail collection loudly, not silently drop to mock-only.
+    from vla_edge_manipulation.backends.sim import MuJoCoBackend
+
+    BACKEND_FACTORIES["sim"] = MuJoCoBackend
 
 
 @pytest.fixture(params=BACKEND_FACTORIES.keys())
