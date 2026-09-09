@@ -31,8 +31,7 @@ from vla_edge_manipulation.schema import (
     validate_action,
 )
 
-_ARM_JOINT_NAMES = JOINT_NAMES[:-1]
-_GRIPPER_JOINT_NAME = JOINT_NAMES[-1]
+_ARM_JOINT_NAMES = JOINT_NAMES[:-1]  # JOINT_NAMES[-1] is the gripper, per schema.py
 
 
 def _repo_root() -> Path:
@@ -62,12 +61,9 @@ class MuJoCoBackend(RobotBackend):
         self._data: mujoco.MjData | None = None
         self._renderer: mujoco.Renderer | None = None
         self._n_substeps = 1
-        self._arm_qpos_adr = np.zeros(len(_ARM_JOINT_NAMES), dtype=int)
-        self._arm_actuator_id = np.zeros(len(_ARM_JOINT_NAMES), dtype=int)
-        self._arm_joint_range = np.zeros((len(_ARM_JOINT_NAMES), 2))
-        self._gripper_qpos_adr = 0
-        self._gripper_actuator_id = 0
-        self._gripper_joint_range = (0.0, 0.0)
+        self._qpos_adr = np.zeros(len(JOINT_NAMES), dtype=int)
+        self._actuator_id = np.zeros(len(JOINT_NAMES), dtype=int)
+        self._joint_range = np.zeros((len(JOINT_NAMES), 2))
 
     def connect(self) -> None:
         config = _load_config(self._config_path)
@@ -87,26 +83,17 @@ class MuJoCoBackend(RobotBackend):
             self._model, height=config["render_height"], width=config["render_width"]
         )
 
-        for i, name in enumerate(_ARM_JOINT_NAMES):
+        for i, name in enumerate(JOINT_NAMES):
             joint_id = mujoco.mj_name2id(self._model, mujoco.mjtObj.mjOBJ_JOINT, name)
-            self._arm_qpos_adr[i] = self._model.jnt_qposadr[joint_id]
-            self._arm_actuator_id[i] = mujoco.mj_name2id(
+            self._qpos_adr[i] = self._model.jnt_qposadr[joint_id]
+            self._actuator_id[i] = mujoco.mj_name2id(
                 self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, name
             )
-            self._arm_joint_range[i] = self._model.jnt_range[joint_id]
-
-        gripper_joint_id = mujoco.mj_name2id(
-            self._model, mujoco.mjtObj.mjOBJ_JOINT, _GRIPPER_JOINT_NAME
-        )
-        self._gripper_qpos_adr = self._model.jnt_qposadr[gripper_joint_id]
-        self._gripper_actuator_id = mujoco.mj_name2id(
-            self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, _GRIPPER_JOINT_NAME
-        )
-        # Empirically verified (mesh-to-mesh proximity, not assumed): the joint's
-        # *max* is the closed position, its *min* is open — opposite of the
-        # schema's 0=closed/100=open ordering, so the two ends swap in the maps below.
-        lo, hi = self._model.jnt_range[gripper_joint_id]
-        self._gripper_joint_range = (float(lo), float(hi))
+            self._joint_range[i] = self._model.jnt_range[joint_id]
+        # Gripper joint (last row): empirically verified (mesh-to-mesh proximity,
+        # not assumed) that its *max* is the closed position and its *min* is
+        # open — opposite of schema's 0=closed/100=open, so the two ends swap
+        # in _schema_to_joint_gripper/_joint_to_schema_gripper below.
 
         self._n_substeps = max(1, round((1.0 / FPS) / self._model.opt.timestep))
         mujoco.mj_resetData(self._model, self._data)
@@ -115,8 +102,8 @@ class MuJoCoBackend(RobotBackend):
     def get_observation(self) -> dict[str, np.ndarray]:
         assert self._data is not None and self._renderer is not None, "connect() not called"
         state = np.empty(STATE_DIM, dtype=np.float32)
-        state[:-1] = self._data.qpos[self._arm_qpos_adr]
-        state[-1] = self._joint_to_schema_gripper(self._data.qpos[self._gripper_qpos_adr])
+        state[:-1] = self._data.qpos[self._qpos_adr[:-1]]
+        state[-1] = self._joint_to_schema_gripper(self._data.qpos[self._qpos_adr[-1]])
 
         obs: dict[str, np.ndarray] = {OBS_STATE_KEY: state}
         for camera in CAMERA_KEYS:
@@ -129,8 +116,8 @@ class MuJoCoBackend(RobotBackend):
         validate_action(action)
         arr = np.asarray(action, dtype=np.float64)
         self._validate_arm_joint_range(arr[:-1])
-        self._data.ctrl[self._arm_actuator_id] = arr[:-1]
-        self._data.ctrl[self._gripper_actuator_id] = self._schema_to_joint_gripper(float(arr[-1]))
+        self._data.ctrl[self._actuator_id[:-1]] = arr[:-1]
+        self._data.ctrl[self._actuator_id[-1]] = self._schema_to_joint_gripper(float(arr[-1]))
         for _ in range(self._n_substeps):
             mujoco.mj_step(self._model, self._data)
 
@@ -148,7 +135,7 @@ class MuJoCoBackend(RobotBackend):
         # The actuator only clamps *force*, not ctrl — an out-of-range target
         # would otherwise be accepted silently and just creep to the joint's
         # hard stop instead of erroring, unlike the gripper's schema check.
-        lo, hi = self._arm_joint_range[:, 0], self._arm_joint_range[:, 1]
+        lo, hi = self._joint_range[:-1, 0], self._joint_range[:-1, 1]
         bad = (arm_values < lo) | (arm_values > hi)
         if bad.any():
             i = int(np.flatnonzero(bad)[0])
@@ -158,11 +145,11 @@ class MuJoCoBackend(RobotBackend):
             )
 
     def _schema_to_joint_gripper(self, value: float) -> float:
-        lo, hi = self._gripper_joint_range
+        lo, hi = self._joint_range[-1]
         frac_open = (value - GRIPPER_MIN) / (GRIPPER_MAX - GRIPPER_MIN)
         return hi - frac_open * (hi - lo)
 
     def _joint_to_schema_gripper(self, joint_value: float) -> float:
-        lo, hi = self._gripper_joint_range
+        lo, hi = self._joint_range[-1]
         frac_open = (hi - joint_value) / (hi - lo)
         return frac_open * (GRIPPER_MAX - GRIPPER_MIN) + GRIPPER_MIN
