@@ -1,6 +1,6 @@
 [project]
 name = "vla-edge-manipulation"
-version = "0.1.0"
+version = "0.2.0"
 description = "VLA model on an SO-101 arm, deployed to a Jetson Orin Nano — FYP"
 requires-python = ">=3.12"
 dependencies = [
