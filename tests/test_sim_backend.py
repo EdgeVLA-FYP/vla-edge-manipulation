@@ -84,6 +84,14 @@ def test_methods_reject_calls_after_disconnect():
         b.send_action(action)
     with pytest.raises(RuntimeError):
         b.reset_to_home()
+    with pytest.raises(RuntimeError):
+        b.launch_interactive_viewer()
+
+
+def test_launch_interactive_viewer_rejects_before_connect():
+    b = MuJoCoBackend()
+    with pytest.raises(RuntimeError):
+        b.launch_interactive_viewer()
 
 
 def test_reset_to_home_randomizes_cube_within_configured_area(backend):

@@ -27,6 +27,7 @@ src/vla_edge_manipulation/
     sim.py           MuJoCo backend, SO-101
     real.py          (lands once hardware is available)
 configs/              *.yaml.example templates; real *.yaml is gitignored
+scripts/              standalone dev-convenience scripts, not part of the installed package
 tests/                 schema validation + backend conformance tests
 docs/
   ARCHITECTURE.md      current system design — living doc, edited in place as it evolves

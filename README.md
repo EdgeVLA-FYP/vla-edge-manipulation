@@ -14,6 +14,7 @@ Final Year Project.
   backend (see that directory's `NOTICE.md` for source and license).
 - `configs/` — copy each `*.yaml.example` to `*.yaml` (gitignored) and fill
   in machine-specific values (ports, paths, camera indices).
+- `scripts/` — standalone dev-convenience scripts, not part of the installed package.
 - `tests/` — schema and backend conformance tests.
 - `docs/decisions.md`, `docs/experiments.md`, `docs/sessions.md` —
   append-only logs.
@@ -30,9 +31,16 @@ pre-commit install
 pytest tests/ -v
 ```
 
-MuJoCo needs a headless rendering backend on a machine with no GPU/display —
-`MUJOCO_GL=egl` (software EGL via Mesa) works without sudo or a GPU on
-Linux, including under WSL2.
+MuJoCo needs a headless rendering backend on a machine with no GPU/display — `MUJOCO_GL=egl` (software EGL via Mesa) works without sudo or a GPU on
+Linux, including under WSL2. That's for offscreen camera rendering (`get_observation()`, tests, CI) only — don't set it for the interactive viewer below, which needs a real GLFW/OpenGL window instead.
+
+## Running the simulation
+
+With the `sim` extra installed (see Setup):
+```bash
+bash scripts/view_sim.sh
+```
+Opens an interactive window with joint/control sliders for manually posing the SO-101 arm and watching physics — the scene includes the pick-cube task workspace (cube + target bin). Close the window to exit.
 
 ## Status
 

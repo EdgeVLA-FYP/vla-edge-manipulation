@@ -40,4 +40,8 @@ NaN in a non-gripper action slot passed both `validate_action()` and `sim.py`'s 
 Added a 2cm cube (free body) and an open-top blue bin to `so101.xml`, per `configs/task_pickcube.yaml.example`'s instruction and `success_criteria: cube_center_within_box_bounds`. Cube sits at the center of `robot_sim.yaml.example`'s `cube_area_cm` spawn region.
 
 Cube size is a **first-pass estimate, not a verified fit** — exact gripper aperture couldn't be pinned down reliably by mesh geometry (two
-different heuristics gave contradictory results), so it's grounded in a physics contact test instead (a real 2cm cube registered 13 contacts when the gripper closed on it, with no explosion/NaN) rather than a geometric measurement. Actual graspability — and, if needed, resizing — gets proven when the scripted pick-place controller is built (next PR).
+different heuristics gave contradictory results), so it's grounded in a physics contact test instead (a real 2cm cube registered 13 contacts when the gripper closed on it, with no explosion/NaN) rather than a geometric measurement.
+
+## 2026-09-10 — `scripts/view_sim.sh` for manual sim inspection
+
+One shell script. Added `MuJoCoBackend.launch_interactive_viewer()` (wraps `mujoco.viewer.launch`) so the script reuses `connect()`'s config loading and workspace overrides rather than building its own model — the interactive view can't drift from what `get_observation()` returns. Needs a real GLFW/OpenGL display, not the offscreen EGL path the rest of the backend uses — `MUJOCO_GL=egl` is for camera rendering only, don't set it for this script.
