@@ -24,7 +24,8 @@ class RobotBackend(ABC):
         """Accepts an array matching schema.validate_action()."""
 
     @abstractmethod
-    def reset_to_home(self) -> None: ...
+    def reset_to_home(self) -> None:
+        """Call between episodes. Resets the arm."""
 
     @abstractmethod
     def disconnect(self) -> None: ...

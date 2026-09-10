@@ -1,7 +1,20 @@
 # Copy to robot_sim.yaml (gitignored) and adjust per machine.
+# Single source of truth for the expected shape
 scene_path: assets/robotstudio_so101/so101.xml
 physics_timestep: 0.002
 render_width: 640
 render_height: 480
 randomization:
-  cube_area_cm: [20, 20] # published SO-101 work default
+  cube_area_cm: [20, 20] # centered on the gripper's home XY; published SO-101 work default
+
+# Standard-case defaults — not yet matched to real hardware, since none exists
+# yet. Once the real table/cube/camera are built, update these to the measured
+# values; nothing else in the scene needs to change (see docs/decisions.md).
+workspace:
+  table_color: [0.5, 0.5, 0.5]
+  table_friction: [1.0, 0.005, 0.0001] # sliding, torsional, rolling (MuJoCo geom friction)
+  cube_size_cm: 2.0
+  cube_color: [0.8, 0.1, 0.1]
+  cube_friction: [1.5, 0.01, 0.0001]
+  bin_color: [0.1, 0.2, 0.7]
+  front_camera_pos: [0.55, 0.05, 0.32] # planned real mount: external stand, ~55cm out, ~32cm high
