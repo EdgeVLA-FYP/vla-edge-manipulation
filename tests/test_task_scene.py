@@ -36,11 +36,7 @@ def test_cube_settles_on_floor_without_exploding(model):
 
 
 def test_static_xml_cube_position_and_bin_do_not_overlap(model):
-    # Sanity check on the fallback XML defaults only — these aren't what
-    # MuJoCoBackend actually uses at runtime (the real spawn center is the
-    # live 'gripper' body xpos, not this static cube body_pos). The real,
-    # config-driven invariant is enforced in MuJoCoBackend.connect() and
-    # covered by test_sim_backend.py::test_overlapping_cube_area_raises.
+    # Sanity check on the fallback XML defaults only
     cube_body = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "cube")
     bin_body = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "bin")
     cube_xy = model.body_pos[cube_body][:2]

@@ -43,9 +43,7 @@ def _default_config_path() -> Path:
 def _check_required_keys(
     config: dict[str, Any], required: dict[str, Any], path: Path, prefix: str = ""
 ) -> None:
-    """Recursively checks config has every key `required` (the parsed
-    *.yaml.example) declares — that template is already the single source of
-    truth for the expected shape, so there's nothing else to keep in sync."""
+    """Recursively checks config has every key `required` (the parsed *.yaml.example) declares."""
     for key, example_value in required.items():
         full_key = f"{prefix}{key}"
         if key not in config:
@@ -56,9 +54,6 @@ def _check_required_keys(
 
 
 def _load_config(path: Path) -> dict[str, Any]:
-    # The canonical template, regardless of where `path` itself lives (the
-    # default location, or a custom/test config elsewhere) — there is only
-    # ever one schema for this config type.
     example_path = _repo_root() / "configs" / "robot_sim.yaml.example"
     if not path.exists():
         raise FileNotFoundError(
@@ -76,13 +71,7 @@ def _load_config(path: Path) -> dict[str, Any]:
 
 
 def _lookat_quat(cam_pos: np.ndarray, target: np.ndarray) -> np.ndarray:
-    """Camera orientation (wxyz) looking from cam_pos toward target, world +Z up.
-
-    A top-down/bottom-up mount (forward parallel to world +Z) is a legitimate
-    real camera position, not an edge case to reject — cross(forward, +Z) is
-    then the zero vector, so fall back to +X as the reference axis instead of
-    silently dividing by zero into a NaN quaternion.
-    """
+    """Camera orientation (wxyz) looking from cam_pos toward target, world +Z up."""
     forward = target - cam_pos
     forward /= np.linalg.norm(forward)
     world_up = (0.0, 0.0, 1.0) if abs(forward[2]) < 0.999 else (1.0, 0.0, 0.0)
@@ -186,9 +175,8 @@ class MuJoCoBackend(RobotBackend):
             mujoco.mj_step(self._model, self._data)
 
     def reset_to_home(self) -> None:
-        """Resets the arm to its zero pose. For sim, also re-randomizes the
-        cube's start position within cube_area_cm — the equivalent step for a
-        real backend is a human physically moving the cube between episodes."""
+        """Resets the arm to its zero pose. Also re-randomizes the cube's start
+        position within cube_area_cm"""
         if self._model is None or self._data is None:
             raise RuntimeError("connect() not called")
         mujoco.mj_resetData(self._model, self._data)
@@ -239,9 +227,7 @@ class MuJoCoBackend(RobotBackend):
         return id_
 
     def _apply_workspace_config(self, workspace: dict[str, Any], scene_path: Path) -> None:
-        """Overrides scene appearance/geometry from configs/robot_sim.yaml so the
-        workspace (table colour, cube size/colour, bin colour, camera mount) can
-        be recalibrated to real hardware later without touching so101.xml."""
+        """Overrides scene appearance/geometry from configs/robot_sim.yaml"""
         assert self._model is not None
 
         self._cube_half_size = workspace["cube_size_cm"] / 100.0 / 2.0
@@ -261,8 +247,7 @@ class MuJoCoBackend(RobotBackend):
             geom = self._mj_id(mujoco.mjtObj.mjOBJ_GEOM, wall, scene_path)
             self._model.geom_rgba[geom] = [*workspace["bin_color"], 1.0]
             wall_geoms.append(geom)
-        # Outer footprint from the actual wall geometry, not a hardcoded number —
-        # stays correct if the bin's dimensions in so101.xml ever change.
+        # Outer footprint from the actual wall geometry, not a hardcoded number
         bin_half_extent = np.max(
             [
                 np.abs(self._model.geom_pos[g][:2]) + self._model.geom_size[g][:2]

@@ -35,10 +35,6 @@ def _settle(backend, action, steps=60):
 
 
 def test_gripper_min_is_closed_and_max_is_open(backend):
-    # Asserts on the raw MuJoCo joint value, not just the schema-space
-    # round-trip: _schema_to_joint_gripper/_joint_to_schema_gripper are exact
-    # inverses, so a mapping that flips direction in both consistently would
-    # still pass a schema-only check while driving the physical joint backwards.
     lo, hi = backend._joint_range[-1]
     gripper_qpos_adr = backend._qpos_adr[-1]
 
@@ -118,9 +114,7 @@ def test_same_seed_reproduces_cube_placement():
 
 def test_lookat_quat_handles_top_down_camera_without_nan():
     # forward parallel to world +Z (a straight-down mount) makes
-    # cross(forward, +Z) the zero vector — a real division-by-zero, not a
-    # hypothetical one, verified against the unfixed code before this test
-    # was added.
+    # cross(forward, +Z) the zero vector
     for cam_pos, target in [
         (np.array([0.3, -0.09, 1.0]), np.array([0.3, -0.09, 0.0])),  # straight down
         (np.array([0.3, -0.09, -1.0]), np.array([0.3, -0.09, 0.0])),  # straight up
@@ -131,10 +125,6 @@ def test_lookat_quat_handles_top_down_camera_without_nan():
 
 
 def test_overlapping_cube_area_raises(tmp_path):
-    # The spawn region is centered on the *live* gripper xpos, not a static
-    # XML default — widening cube_area_cm enough makes it overlap the bin
-    # footprint, which would silently spawn cubes inside/through the bin if
-    # unchecked. Verified this was previously silent before adding the check.
     config = yaml.safe_load(_CONFIG_EXAMPLE.read_text())
     config["randomization"]["cube_area_cm"] = [60, 60]
     config_path = tmp_path / "robot_sim.yaml"
