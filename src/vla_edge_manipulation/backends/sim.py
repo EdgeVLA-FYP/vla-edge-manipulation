@@ -198,9 +198,7 @@ class MuJoCoBackend(RobotBackend):
 
     def launch_interactive_viewer(self) -> None:
         """Opens MuJoCo's interactive viewer on the connected scene for manual
-        inspection — blocks until the window is closed. Needs a real GLFW/OpenGL
-        display (not the offscreen EGL path get_observation() uses) — run from
-        your own terminal, not through scripted automation."""
+        inspection"""
         if self._model is None or self._data is None:
             raise RuntimeError("connect() not called")
         import mujoco.viewer
