@@ -11,6 +11,9 @@ dependencies = [
 sim = ["mujoco", "pyyaml"]
 dev = ["pytest", "ruff", "mypy", "pre-commit", "types-pyyaml"]
 
+[project.scripts]
+vla-sim-view = "vla_edge_manipulation.scripts.view_sim:main"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"

@@ -20,7 +20,7 @@ If a change requires touching anything outside `backends/` to make sim and real 
 
 ## Current state
 
-- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101).
+- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101); `vla-sim-view` console script for manual sim inspection.
 - **Not yet**: `backends/real.py` (SO-101 hardware), dataset recording, training, evaluation.
 
 ## Key decisions already reflected in code

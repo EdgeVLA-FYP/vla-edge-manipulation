@@ -196,6 +196,17 @@ class MuJoCoBackend(RobotBackend):
         self._model = None
         self._data = None
 
+    def launch_interactive_viewer(self) -> None:
+        """Opens MuJoCo's interactive viewer on the connected scene for manual
+        inspection — blocks until the window is closed. Needs a real GLFW/OpenGL
+        display (not the offscreen EGL path get_observation() uses) — run from
+        your own terminal, not through scripted automation."""
+        if self._model is None or self._data is None:
+            raise RuntimeError("connect() not called")
+        import mujoco.viewer
+
+        mujoco.viewer.launch(self._model, self._data)
+
     def _validate_arm_joint_range(self, arm_values: np.ndarray) -> None:
         # The actuator only clamps *force*, not ctrl — an out-of-range target
         # would otherwise be accepted silently and just creep to the joint's

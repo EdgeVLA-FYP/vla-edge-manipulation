@@ -41,3 +41,15 @@ Added a 2cm cube (free body) and an open-top blue bin to `so101.xml`, per `confi
 
 Cube size is a **first-pass estimate, not a verified fit** — exact gripper aperture couldn't be pinned down reliably by mesh geometry (two
 different heuristics gave contradictory results), so it's grounded in a physics contact test instead (a real 2cm cube registered 13 contacts when the gripper closed on it, with no explosion/NaN) rather than a geometric measurement. Actual graspability — and, if needed, resizing — gets proven when the scripted pick-place controller is built (next PR).
+
+## 2026-09-10 — `vla-sim-view` console script for manual sim inspection
+
+Added `MuJoCoBackend.launch_interactive_viewer()` (wraps `mujoco.viewer.launch`)
+and an installed console script, `vla-sim-view`, rather than a standalone
+script building its own model — reuses `connect()`'s config loading and
+workspace overrides, so the interactive view can never drift from what
+`get_observation()` actually returns. Needs a real GLFW/OpenGL display, not
+the offscreen EGL path the rest of the backend uses — `MUJOCO_GL=egl` is
+for camera rendering only, don't set it for this. No headless demo-video
+path was built: the interactive viewer already works directly on the dev
+machine, so it wasn't a gap worth solving with more tooling.
