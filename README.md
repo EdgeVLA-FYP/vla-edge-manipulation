@@ -14,6 +14,7 @@ Final Year Project.
   backend (see that directory's `NOTICE.md` for source and license).
 - `configs/` — copy each `*.yaml.example` to `*.yaml` (gitignored) and fill
   in machine-specific values (ports, paths, camera indices).
+- `scripts/` — standalone dev-convenience scripts, not part of the installed package.
 - `tests/` — schema and backend conformance tests.
 - `docs/decisions.md`, `docs/experiments.md`, `docs/sessions.md` —
   append-only logs.
@@ -40,14 +41,12 @@ viewer below, which needs a real GLFW/OpenGL window instead.
 
 With the `sim` extra installed (see Setup):
 ```bash
-vla-sim-view
+bash scripts/view_sim.sh
 ```
 Opens an interactive window with joint/control sliders for manually posing
 the SO-101 arm and watching physics — the scene includes the pick-cube
 task workspace (cube + target bin). Close the window to exit. Needs a real
 display; run it from your own terminal, not through remote automation.
-`vla-sim-view --dry-run` connects and validates the scene without opening
-a window, for a quick sanity check.
 
 ## Status
 
