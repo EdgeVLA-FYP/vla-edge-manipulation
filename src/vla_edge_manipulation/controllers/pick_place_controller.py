@@ -2,7 +2,7 @@
 dataset recording (issue #7/#8). Sim-only: depends on MuJoCoBackend's
 ground-truth pose/IK accessors, which have no real-hardware equivalent.
 
-Known limitation: measured success is 93/100
+Known limitation: measured success is 94/100
 (`scripts/measure_pickplace_success.sh`, seed=42). Remaining failures are a
 torque-imbalanced-grasp rotational-drift mechanism, not a trajectory bug —
 see docs/decisions.md for the fix history and for why an early-warning

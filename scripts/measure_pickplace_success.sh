@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs PickPlaceController across N randomized episodes and reports the
-# measured grasp+place success rate — currently 93/100 at seed=42. See
+# measured grasp+place success rate — currently 94/100 at seed=42. See
 # docs/decisions.md (2026-09-12 entries) for the fix history.
 #
 # Usage: bash scripts/measure_pickplace_success.sh [N]  (default N=25)
