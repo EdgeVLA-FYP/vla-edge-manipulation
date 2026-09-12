@@ -9,6 +9,7 @@ dependencies = [
 
 [project.optional-dependencies]
 sim = ["mujoco", "pyyaml"]
+recording = ["lerobot[dataset]"]
 dev = ["pytest", "ruff", "mypy", "pre-commit", "types-pyyaml"]
 
 [build-system]

@@ -21,6 +21,7 @@ This file is project-wide context for anyone (or any agent) working in this repo
 ```
 src/vla_edge_manipulation/
   schema.py          the shared contract — read this first
+  config.py          shared YAML config loading (configs/*.yaml)
   backends/
     base.py          RobotBackend interface
     mock.py          fake backend, no hardware/sim required
@@ -28,6 +29,8 @@ src/vla_edge_manipulation/
     real.py          (lands once hardware is available)
   controllers/       scripted controllers (ground-truth "experts" for
                       dataset recording) — consume a backend, aren't one
+  recording.py       records a controller's episodes into LeRobotDataset
+                      format and validates them
 configs/              *.yaml.example templates; real *.yaml is gitignored
 scripts/              standalone dev-convenience scripts, not part of the installed package
 tests/                 schema validation + backend conformance tests

@@ -20,9 +20,9 @@ If a change requires touching anything outside `backends/` to make sim and real 
 
 ## Current state
 
-- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101, plus sim-only `get_body_pose()`/`solve_ik()` ground-truth accessors); `controllers/pick_place_controller.py` (`PickPlaceController` — scripted IK pick-place state machine, a ground-truth "expert" for dataset recording, not a `RobotBackend`); `scripts/view_sim.sh` for manual sim inspection.
-- **Built, partially working**: `PickPlaceController` succeeds 94/100 (`scripts/measure_pickplace_success.sh`, seed=42). Remaining failures are a torque-imbalanced-grasp rotational-drift mechanism (cube angular velocity damps to zero or diverges until contact is lost) — see `docs/decisions.md` (2026-09-12) for the full fix history and for why a retry classifier wasn't added.
-- **Not yet**: `backends/real.py` (SO-101 hardware), dataset recording, training, evaluation — Phase 2 (dataset recording, issue #8) is blocked on the grasp being reliable enough.
+- **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `config.py` (shared YAML config loading); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101, plus sim-only `get_body_pose()`/`solve_ik()` ground-truth accessors); `controllers/pick_place_controller.py` (`PickPlaceController` — scripted IK pick-place state machine, a ground-truth "expert" for dataset recording, not a `RobotBackend`); `recording.py` (records a controller's episodes into `LeRobotDataset` format, validates the result, optionally pushes to the Hub — issue #8); `scripts/view_sim.sh`, `scripts/record_dataset.sh` for manual use.
+- **Built, partially working**: `PickPlaceController` succeeds 94/100 (`scripts/measure_pickplace_success.sh`, seed=42). Remaining failures are a torque-imbalanced-grasp rotational-drift mechanism (cube angular velocity damps to zero or diverges until contact is lost) — see `docs/decisions.md` (2026-09-12) for the full fix history and for why a retry classifier wasn't added. `recording.py` retries a failed *whole episode* using this same pass/fail signal rather than including it — a different, much simpler mechanism than the rejected mid-episode classifier above (see "Deliberately not built yet").
+- **Not yet**: `backends/real.py` (SO-101 hardware), training, evaluation.
 
 ## Key decisions already reflected in code
 
@@ -37,11 +37,13 @@ If a change requires touching anything outside `backends/` to make sim and real 
 - Gripper raw-joint direction: `jnt_range` **min = closed** (~6mm fingertip gap), **max = open** (~141mm) — matches schema's 0=closed/100=open directly. (A 2026-09-08 check got this backwards; corrected 2026-09-12 — see `docs/decisions.md`.)
 - `MuJoCoBackend.get_body_pose()`/`.solve_ik()` are sim-only ground-truth accessors (no `RobotBackend` equivalent — real hardware has no ground-truth object pose or Jacobian) used by `PickPlaceController`, the scripted "expert" that will drive Phase 2 dataset recording once its grasp is reliable. `solve_ik()` holds `wrist_roll` fixed and regularizes toward a top-down approach; see `docs/decisions.md` for why.
 - The vendored gripper mesh has two small supplementary grip-pad geoms added (`assets/robotstudio_so101/NOTICE.md`) — the bare mesh's pointed jaw tips couldn't hold a small cube through a lift.
+- `recording.py`'s `record_dataset()` takes an already-constructed `PickPlaceController` (dependency injection) rather than building one itself — lets tests exercise the retry/discard loop against a fake, short-episode controller instead of real ~2800-step episodes.
+- Only successful episodes are written to the dataset; a failed attempt is discarded (`dataset.clear_episode_buffer()`) and retried, never recorded with a "failed" flag — a policy shouldn't be trained to imitate a failure. See `docs/decisions.md`.
 
 ## Deliberately not built yet
 
 - A multi-robot registry — SO-101 is the only target; add one only when a second robot is real, not speculatively.
-- A custom training loop — `lerobot-train` once `lerobot` is added (see `CLAUDE.md`'s dependency philosophy).
+- A custom training loop — `lerobot-train` once a training issue is scoped (see `CLAUDE.md`'s dependency philosophy).
 - Photorealistic rendering — not needed for the pipeline-rehearsal/evaluation role sim plays here.
 - RL/reward design — imitation learning only.
-- Grasp-verification/retry logic in `PickPlaceController` — a classifier for this was built and found not to generalize (see `docs/decisions.md`); don't re-add retry logic without first validating a detector on a large (several-hundred-trial), held-out sample.
+- Mid-episode grasp-verification/retry logic in `PickPlaceController` itself — a classifier for this was built and found not to generalize (see `docs/decisions.md`); don't re-add it without first validating a detector on a large (several-hundred-trial), held-out sample. `recording.py`'s whole-episode retry (above) is a different, already-validated mechanism — it doesn't need this.
