@@ -26,6 +26,8 @@ src/vla_edge_manipulation/
     mock.py          fake backend, no hardware/sim required
     sim.py           MuJoCo backend, SO-101
     real.py          (lands once hardware is available)
+  controllers/       scripted controllers (ground-truth "experts" for
+                      dataset recording) — consume a backend, aren't one
 configs/              *.yaml.example templates; real *.yaml is gitignored
 scripts/              standalone dev-convenience scripts, not part of the installed package
 tests/                 schema validation + backend conformance tests

@@ -10,6 +10,9 @@ Final Year Project.
   dimensions, units, camera keys). Everything else imports it.
 - `src/vla_edge_manipulation/backends/` — `RobotBackend` interface plus
   implementations (`mock`, `sim`; `real` lands once hardware is available).
+- `src/vla_edge_manipulation/controllers/` — scripted controllers used as
+  ground-truth "experts" for dataset recording (`pick_place_controller.py`).
+  Grasp reliability is a known open problem — see `docs/decisions.md`.
 - `assets/robotstudio_so101/` — vendored MuJoCo scene/meshes for the sim
   backend (see that directory's `NOTICE.md` for source and license).
 - `configs/` — copy each `*.yaml.example` to `*.yaml` (gitignored) and fill
@@ -42,8 +45,14 @@ bash scripts/view_sim.sh
 ```
 Opens an interactive window with joint/control sliders for manually posing the SO-101 arm and watching physics — the scene includes the pick-cube task workspace (cube + target bin). Close the window to exit.
 
+To reproduce the pick-place controller's measured grasp success rate:
+```bash
+bash scripts/measure_pickplace_success.sh 25
+```
+
 ## Status
 
-Sim backend (MuJoCo) is up alongside the mock backend. See
-`docs/decisions.md` for what's been decided so far and
-`docs/ARCHITECTURE.md` for current state.
+Sim backend (MuJoCo) is up alongside the mock backend. A scripted IK
+pick-place controller exists and succeeds 93/100 (93%, not yet reliable
+enough for dataset recording) — see `docs/decisions.md` for what's been
+decided so far and `docs/ARCHITECTURE.md` for current state.

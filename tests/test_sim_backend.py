@@ -42,13 +42,13 @@ def test_gripper_min_is_closed_and_max_is_open(backend):
     closed[-1] = GRIPPER_MIN
     obs = _settle(backend, closed)
     assert obs["observation.state"][-1] == pytest.approx(GRIPPER_MIN, abs=1.0)
-    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(hi, abs=0.05)
+    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(lo, abs=0.05)
 
     opened = np.zeros(len(JOINT_NAMES), dtype=np.float32)
     opened[-1] = GRIPPER_MAX
     obs = _settle(backend, opened)
     assert obs["observation.state"][-1] == pytest.approx(GRIPPER_MAX, abs=1.0)
-    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(lo, abs=0.05)
+    assert backend._data.qpos[gripper_qpos_adr] == pytest.approx(hi, abs=0.05)
 
 
 def test_arm_joints_track_commanded_radians_in_order(backend):
@@ -86,6 +86,10 @@ def test_methods_reject_calls_after_disconnect():
         b.reset_to_home()
     with pytest.raises(RuntimeError):
         b.launch_interactive_viewer()
+    with pytest.raises(RuntimeError):
+        b.get_body_pose("cube")
+    with pytest.raises(RuntimeError):
+        b.solve_ik(np.zeros(3))
 
 
 def test_launch_interactive_viewer_rejects_before_connect():
@@ -94,18 +98,45 @@ def test_launch_interactive_viewer_rejects_before_connect():
         b.launch_interactive_viewer()
 
 
-def test_reset_to_home_randomizes_cube_within_configured_area(backend):
+def test_get_body_pose_matches_reset_to_home_randomization(backend):
     positions = []
     for _ in range(5):
         backend.reset_to_home()
-        adr = backend._cube_qpos_adr
-        positions.append(backend._data.qpos[adr : adr + 2].copy())
+        pos, quat = backend.get_body_pose("cube")
+        assert quat == pytest.approx([1.0, 0.0, 0.0, 0.0])
+        positions.append(pos.copy())
     positions = np.array(positions)
-
     lo = backend._cube_home_center - backend._cube_area_half_extent
     hi = backend._cube_home_center + backend._cube_area_half_extent
-    assert np.all((positions >= lo) & (positions <= hi))
+    assert np.all((positions[:, :2] >= lo) & (positions[:, :2] <= hi))
     assert not np.allclose(positions[0], positions[1])
+
+
+def test_get_body_pose_unknown_name_raises(backend):
+    with pytest.raises(ValueError, match="nonexistent_body"):
+        backend.get_body_pose("nonexistent_body")
+
+
+def test_solve_ik_converges_to_reachable_target(backend):
+    cube_pos, _ = backend.get_body_pose("cube")
+    target = cube_pos + [0.0, 0.0, 0.08]
+    q = backend.solve_ik(target)
+    assert q.shape == (len(JOINT_NAMES) - 1,)
+    assert q[4] == 0.0  # wrist_roll held fixed
+
+    backend._data.qpos[backend._qpos_adr[:-1]] = q
+    mujoco.mj_forward(backend._model, backend._data)
+    rot = backend._data.xmat[backend._gripper_body_id].reshape(3, 3)
+    tcp = backend._data.xpos[backend._gripper_body_id] + rot @ backend._GRIPPER_TCP_OFFSET
+    assert np.linalg.norm(target - tcp) < 0.005
+
+
+def test_solve_ik_seed_gives_continuity(backend):
+    cube_pos, _ = backend.get_body_pose("cube")
+    target = cube_pos + [0.0, 0.0, 0.08]
+    q1 = backend.solve_ik(target)
+    q2 = backend.solve_ik(target, seed=q1)
+    np.testing.assert_allclose(q1, q2, atol=1e-6)
 
 
 def test_same_seed_reproduces_cube_placement():

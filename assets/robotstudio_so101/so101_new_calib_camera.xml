@@ -109,6 +109,8 @@
                 <!-- Part wrist_roll_follower_so101_v1 -->
                 <geom type="mesh" class="visual" pos="8.32667e-17 -0.000218214 0.000949706" quat="0 1 0 0" mesh="wrist_roll_follower_so101_v1" material="wrist_roll_follower_so101_v1_material"/>
                 <geom type="mesh" class="collision" pos="8.32667e-17 -0.000218214 0.000949706" quat="0 1 0 0" mesh="wrist_roll_follower_so101_v1" material="wrist_roll_follower_so101_v1_material"/>
+                <!-- vla_edge_manipulation: fixed-jaw grip pad (see NOTICE.md) -->
+                <geom name="fixed_jaw_pad" type="box" size="0.00125 0.00125 0.00125" pos="-0.01103445 -0.00021821 -0.104416" rgba="0.15 0.15 0.15 1" friction="2.5 0.02 0.0002" solref="0.001 1" solimp="0.99 0.99 0.001"/>
                 <!-- Frame gripperframe -->
                 <site group="3" name="gripperframe" pos="-0.0079 -0.000218121 -0.0981274" quat="0.707107 -0 0.707107 -2.37788e-17"/>
                 <!-- Link wrist_camera_mount (Hex-Nut Recess, 32x32 UVC module form factor) -->
@@ -135,6 +137,8 @@
                   <!-- Part moving_jaw_so101_v1 -->
                   <geom type="mesh" class="visual" pos="-5.55112e-17 -5.55112e-17 0.0189" quat="1 -0 3.00524e-16 -2.00834e-17" mesh="moving_jaw_so101_v1" material="moving_jaw_so101_v1_material"/>
                   <geom type="mesh" class="collision" pos="-5.55112e-17 -5.55112e-17 0.0189" quat="1 -0 3.00524e-16 -2.00834e-17" mesh="moving_jaw_so101_v1" material="moving_jaw_so101_v1_material"/>
+                  <!-- vla_edge_manipulation: moving-jaw grip pad (see NOTICE.md) -->
+                  <geom name="moving_jaw_pad" type="box" size="0.00125 0.00125 0.00125" pos="-0.01145223 -0.0819094 0.01950801" rgba="0.15 0.15 0.15 1" friction="2.5 0.02 0.0002" solref="0.001 1" solimp="0.99 0.99 0.001"/>
                 </body>
               </body>
             </body>
