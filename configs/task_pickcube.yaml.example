@@ -1,4 +1,4 @@
 # Copy to task_pickcube.yaml (gitignored) and adjust per task/experiment.
 instruction: "Pick up the red cube and place it in the blue box"
 success_criteria: cube_center_within_box_bounds
-episode_length_target: 150 # steps at schema.FPS
+episode_length_target: 2816 # frames at schema.FPS; PickPlaceController's actual length

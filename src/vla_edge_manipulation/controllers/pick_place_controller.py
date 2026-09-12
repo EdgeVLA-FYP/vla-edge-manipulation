@@ -11,7 +11,7 @@ classifier wasn't added.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import numpy as np
 
@@ -119,16 +119,22 @@ class PickPlaceController:
         home_action = np.array([*_ARM_ZERO, GRIPPER_MAX], dtype=np.float32)
         yield from self._hold(home_action, self._REACH_STEPS)
 
-    def run_episode(self) -> bool:
+    def run_episode(self, on_action: Callable[[np.ndarray], None] | None = None) -> bool:
         """Convenience wrapper for measuring success rate: resets, drives one
         full attempt through `backend`, and checks
         `cube_center_within_box_bounds` (configs/task_pickcube.yaml.example)
         against the cube's final resting position — a momentary lift that
         doesn't survive to release doesn't count.
+
+        `on_action`, if given, is called with each action right before it's
+        sent — e.g. to capture `backend.get_observation()` for recording, at
+        the point where it still reflects the pre-action state.
         """
         self._backend.reset_to_home()
         bin_pos, _ = self._backend.get_body_pose("bin")
         for action in self.run():
+            if on_action is not None:
+                on_action(action)
             self._backend.send_action(action)
         cube_final, _ = self._backend.get_body_pose("cube")
         return bool(np.all(np.abs(cube_final[:2] - bin_pos[:2]) <= self._BIN_HALF_EXTENT))

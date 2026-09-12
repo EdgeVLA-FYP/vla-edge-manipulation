@@ -16,9 +16,9 @@ from typing import Any
 
 import mujoco
 import numpy as np
-import yaml
 
 from vla_edge_manipulation.backends.base import RobotBackend
+from vla_edge_manipulation.config import default_config_path, load_config, repo_root
 from vla_edge_manipulation.schema import (
     CAMERA_KEYS,
     FPS,
@@ -31,44 +31,6 @@ from vla_edge_manipulation.schema import (
     image_key,
     validate_action,
 )
-
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[3]
-
-
-def _default_config_path() -> Path:
-    return _repo_root() / "configs" / "robot_sim.yaml"
-
-
-def _check_required_keys(
-    config: dict[str, Any], required: dict[str, Any], path: Path, prefix: str = ""
-) -> None:
-    """Recursively checks config has every key `required` (the parsed *.yaml.example) declares."""
-    for key, example_value in required.items():
-        full_key = f"{prefix}{key}"
-        if key not in config:
-            example = path.with_suffix(".yaml.example")
-            raise KeyError(f"{path}: missing {full_key!r} — see {example.name} for all fields")
-        if isinstance(example_value, dict):
-            _check_required_keys(config[key], example_value, path, prefix=f"{full_key}.")
-
-
-def _load_config(path: Path) -> dict[str, Any]:
-    example_path = _repo_root() / "configs" / "robot_sim.yaml.example"
-    if not path.exists():
-        raise FileNotFoundError(
-            f"{path} not found — copy {example_path.name} to {path.name} and adjust it"
-        )
-    with path.open() as f:
-        config = yaml.safe_load(f)
-    if not isinstance(config, dict):
-        raise ValueError(f"{path}: expected a YAML mapping, got {type(config).__name__}")
-
-    with example_path.open() as f:
-        example_config = yaml.safe_load(f)
-    _check_required_keys(config, example_config, path)
-    return config
 
 
 def _lookat_quat(cam_pos: np.ndarray, target: np.ndarray) -> np.ndarray:
@@ -104,7 +66,7 @@ class MuJoCoBackend(RobotBackend):
     _IK_ORIENT_WEIGHT = 0.02
 
     def __init__(self, config_path: str | Path | None = None, seed: int | None = None):
-        self._config_path = Path(config_path) if config_path else _default_config_path()
+        self._config_path = Path(config_path) if config_path else default_config_path("robot_sim")
         self._rng = np.random.default_rng(seed)
         self._model: mujoco.MjModel | None = None
         self._data: mujoco.MjData | None = None
@@ -119,12 +81,12 @@ class MuJoCoBackend(RobotBackend):
         self._gripper_body_id = 0
         self._cube_qpos_adr = 0
         self._cube_half_size = 0.01
-        self._cube_area_half_extent = np.zeros(2)
+        self._cube_area_half_extent: np.ndarray = np.zeros(2)
         self._cube_home_center = np.zeros(2)
 
     def connect(self) -> None:
-        config = _load_config(self._config_path)
-        scene_path = _repo_root() / config["scene_path"]
+        config = load_config(self._config_path)
+        scene_path = repo_root() / config["scene_path"]
         self._scene_path = scene_path
 
         render_shape = (config["render_height"], config["render_width"], 3)
