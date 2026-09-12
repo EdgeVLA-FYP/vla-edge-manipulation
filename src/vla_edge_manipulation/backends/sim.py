@@ -10,6 +10,7 @@ convention or document why it diverges.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -280,6 +281,19 @@ class MuJoCoBackend(RobotBackend):
             error = np.concatenate([pos_error, ow * orient_error])
             damped = j @ j.T + (self._IK_DAMPING**2) * np.eye(6)
             q = np.clip(q + self._IK_STEP_SCALE * (j.T @ np.linalg.solve(damped, error)), lo, hi)
+        else:
+            scratch.qpos[self._qpos_adr[:4]] = q
+            mujoco.mj_forward(self._model, scratch)
+            rot = scratch.xmat[self._gripper_body_id].reshape(3, 3)
+            tcp_pos = scratch.xpos[self._gripper_body_id] + rot @ self._GRIPPER_TCP_OFFSET
+            residual_mm = np.linalg.norm(target_pos - tcp_pos) * 1000
+            warnings.warn(
+                f"solve_ik: no convergence within {self._IK_MAX_ITERS} iterations "
+                f"({residual_mm:.1f}mm residual) for target {target_pos} — often a "
+                "joint-limit saturation (see docs/decisions.md), not a transient "
+                "numerical issue.",
+                stacklevel=2,
+            )
         return np.array([*q, 0.0])
 
     def launch_interactive_viewer(self) -> None:

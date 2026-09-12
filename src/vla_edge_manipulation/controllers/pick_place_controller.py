@@ -90,8 +90,7 @@ class PickPlaceController:
         for schema_g in np.arange(GRIPPER_MAX, GRIPPER_MIN - 1, -1.0):
             action = np.array([*seed, schema_g], dtype=np.float32)
             yield from self._hold(action, 6)
-        close_action = np.array([*seed, GRIPPER_MIN], dtype=np.float32)
-        yield from self._hold(close_action, self._SETTLE_STEPS)
+        yield from self._hold(action, self._SETTLE_STEPS)  # settle at fully closed
 
         lift_target = np.array([*grasp_xy, grasp_z + self._APPROACH_HEIGHT])
         seed, lift_action = self._goto(lift_target, GRIPPER_MIN, seed)
