@@ -21,7 +21,7 @@ If a change requires touching anything outside `backends/` to make sim and real 
 ## Current state
 
 - **Built**: `schema.py` (joint order, dims, camera keys, gripper convention, `validate_action`/`validate_observation`); `backends/base.py` (`RobotBackend` ABC); `backends/mock.py`; `backends/sim.py` (MuJoCo, SO-101, plus sim-only `get_body_pose()`/`solve_ik()` ground-truth accessors); `controllers/pick_place_controller.py` (`PickPlaceController` — scripted IK pick-place state machine, a ground-truth "expert" for dataset recording, not a `RobotBackend`); `scripts/view_sim.sh` for manual sim inspection.
-- **Built, partially working**: `PickPlaceController` succeeds 93/100 (`scripts/measure_pickplace_success.sh`, seed=42). Remaining failures are a torque-imbalanced-grasp rotational-drift mechanism (cube angular velocity damps to zero or diverges until contact is lost) — see `docs/decisions.md` (2026-09-12) for the full fix history and for why a retry classifier wasn't added.
+- **Built, partially working**: `PickPlaceController` succeeds 94/100 (`scripts/measure_pickplace_success.sh`, seed=42). Remaining failures are a torque-imbalanced-grasp rotational-drift mechanism (cube angular velocity damps to zero or diverges until contact is lost) — see `docs/decisions.md` (2026-09-12) for the full fix history and for why a retry classifier wasn't added.
 - **Not yet**: `backends/real.py` (SO-101 hardware), dataset recording, training, evaluation — Phase 2 (dataset recording, issue #8) is blocked on the grasp being reliable enough.
 
 ## Key decisions already reflected in code

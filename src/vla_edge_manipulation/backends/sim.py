@@ -240,19 +240,50 @@ class MuJoCoBackend(RobotBackend):
         for the same target and swings the offset fingertip sideways. The
         remaining 4 DOF resolve redundancy via minimal movement from `seed`.
 
+        If position doesn't converge, retries with orientation relaxed
+        before giving up; still warns (`UserWarning`) and returns a
+        best-effort solution if that fails too — never raises.
+
         Runs on a scratch MjData; never disturbs the live simulation.
         Sim-only: real hardware has no ground-truth Jacobian to solve with.
         """
         if self._model is None or self._data is None or self._ik_scratch is None:
             raise RuntimeError("connect() not called")
-        scratch = self._ik_scratch
-        scratch.qpos[:] = self._data.qpos
-        scratch.qpos[self._qpos_adr[4]] = 0.0  # wrist_roll, fixed
-        q = (
+        q_seed = (
             self._data.qpos[self._qpos_adr[:4]].copy()
             if seed is None
             else np.asarray(seed, dtype=np.float64)[:4].copy()
         )
+        q, converged, residual = self._solve_ik_dls(target_pos, q_seed, self._IK_ORIENT_WEIGHT)
+        if not converged:
+            # Relax the orientation regularizer progressively rather than
+            # dropping it straight to 0 — that lets the redundant DOF settle
+            # on a worse configuration (see docs/decisions.md). Only reached
+            # when the default, fully-oriented solve already failed.
+            for orient_weight in (self._IK_ORIENT_WEIGHT / 2, 0.0):
+                q, converged, residual = self._solve_ik_dls(target_pos, q_seed, orient_weight)
+                if converged:
+                    break
+        if not converged:
+            warnings.warn(
+                f"solve_ik: no convergence within {self._IK_MAX_ITERS} iterations "
+                f"({residual * 1000:.1f}mm residual) for target {target_pos}, even "
+                "position-only — likely unreachable at this orientation.",
+                stacklevel=2,
+            )
+        return np.array([*q, 0.0])
+
+    def _solve_ik_dls(
+        self, target_pos: np.ndarray, q_seed: np.ndarray, orient_weight: float
+    ) -> tuple[np.ndarray, bool, float]:
+        """One damped-least-squares solve attempt; see solve_ik(). Returns
+        (joint angles, whether position converged within _IK_TOL, final
+        position residual in metres)."""
+        assert self._model is not None and self._data is not None and self._ik_scratch is not None
+        scratch = self._ik_scratch
+        scratch.qpos[:] = self._data.qpos
+        scratch.qpos[self._qpos_adr[4]] = 0.0  # wrist_roll, fixed
+        q = q_seed.copy()
         # Margin keeps a limit-hugging solution valid after the float32 cast
         # send_action()/schema expect — float64-exact clipping can round back
         # outside jnt_range once narrowed to float32.
@@ -261,7 +292,6 @@ class MuJoCoBackend(RobotBackend):
         hi = self._joint_range[:4, 1] - margin
         dof_adr = self._dof_adr[:4]
         approach_local = self._GRIPPER_TCP_OFFSET / np.linalg.norm(self._GRIPPER_TCP_OFFSET)
-        ow = self._IK_ORIENT_WEIGHT
         jacp = np.zeros((3, self._model.nv))
         jacr = np.zeros((3, self._model.nv))
         for _ in range(self._IK_MAX_ITERS):
@@ -270,31 +300,19 @@ class MuJoCoBackend(RobotBackend):
             rot = scratch.xmat[self._gripper_body_id].reshape(3, 3)
             tcp_pos = scratch.xpos[self._gripper_body_id] + rot @ self._GRIPPER_TCP_OFFSET
             pos_error = target_pos - tcp_pos
+            residual = float(np.linalg.norm(pos_error))
+            if residual < self._IK_TOL:
+                return q, True, residual
             # Orientation is a soft regularizer (biases the redundant DOF, not
             # a hard target) — an exact-zero tilt residual isn't guaranteed to
             # exist, so only position gates convergence.
             orient_error = np.cross(rot @ approach_local, self._IK_DOWN_WORLD)
-            if np.linalg.norm(pos_error) < self._IK_TOL:
-                break
             mujoco.mj_jac(self._model, scratch, jacp, jacr, tcp_pos, self._gripper_body_id)
-            j = np.vstack([jacp[:, dof_adr], ow * jacr[:, dof_adr]])
-            error = np.concatenate([pos_error, ow * orient_error])
+            j = np.vstack([jacp[:, dof_adr], orient_weight * jacr[:, dof_adr]])
+            error = np.concatenate([pos_error, orient_weight * orient_error])
             damped = j @ j.T + (self._IK_DAMPING**2) * np.eye(6)
             q = np.clip(q + self._IK_STEP_SCALE * (j.T @ np.linalg.solve(damped, error)), lo, hi)
-        else:
-            scratch.qpos[self._qpos_adr[:4]] = q
-            mujoco.mj_forward(self._model, scratch)
-            rot = scratch.xmat[self._gripper_body_id].reshape(3, 3)
-            tcp_pos = scratch.xpos[self._gripper_body_id] + rot @ self._GRIPPER_TCP_OFFSET
-            residual_mm = np.linalg.norm(target_pos - tcp_pos) * 1000
-            warnings.warn(
-                f"solve_ik: no convergence within {self._IK_MAX_ITERS} iterations "
-                f"({residual_mm:.1f}mm residual) for target {target_pos} — often a "
-                "joint-limit saturation (see docs/decisions.md), not a transient "
-                "numerical issue.",
-                stacklevel=2,
-            )
-        return np.array([*q, 0.0])
+        return q, False, residual
 
     def launch_interactive_viewer(self) -> None:
         """Opens MuJoCo's interactive viewer on the connected scene for manual

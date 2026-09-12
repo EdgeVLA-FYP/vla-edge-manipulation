@@ -1,13 +1,11 @@
 """Tests for the scripted pick-place controller (Phase 1, GitHub issue #7).
 
-Grasp success is measured, not asserted here: 93/100 (93%,
-`scripts/measure_pickplace_success.sh`), up from a confirmed 77/100 baseline
-after enabling torsional/rolling friction on the cube geom (condim=6) and
-fixing two further failures found by classifying that gap: a bin-wall-clip
-at release and a transport-jump grip disturbance (see docs/decisions.md).
-Still noisy and not yet reliable enough to gate CI on. These tests instead
-guard the parts that are actually correct and stable: the controller runs
-to completion without error and only ever emits schema-valid actions.
+Grasp success is measured, not asserted here: 94/100 (94%,
+`scripts/measure_pickplace_success.sh`), up from a confirmed 77/100
+baseline — see docs/decisions.md for the fix history. Still noisy and not
+yet reliable enough to gate CI on. These tests instead guard the parts
+that are actually correct and stable: the controller runs to completion
+without error and only ever emits schema-valid actions.
 """
 
 import numpy as np

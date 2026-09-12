@@ -53,6 +53,6 @@ bash scripts/measure_pickplace_success.sh 25
 ## Status
 
 Sim backend (MuJoCo) is up alongside the mock backend. A scripted IK
-pick-place controller exists and succeeds 93/100 (93%, not yet reliable
+pick-place controller exists and succeeds 94/100 (94%, not yet reliable
 enough for dataset recording) — see `docs/decisions.md` for what's been
 decided so far and `docs/ARCHITECTURE.md` for current state.
