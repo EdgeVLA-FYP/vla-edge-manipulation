@@ -10,6 +10,7 @@ convention or document why it diverges.
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -88,16 +89,34 @@ def _lookat_quat(cam_pos: np.ndarray, target: np.ndarray) -> np.ndarray:
 class MuJoCoBackend(RobotBackend):
     """Drives the SO-101 MuJoCo simulation for pipeline rehearsal and eval."""
 
+    # Fixed jaw's fingertip position (metres, "gripper" body's local frame),
+    # measured from its mesh vertices — the vendored "gripperframe" site
+    # doesn't track the moving jaw. See docs/decisions.md.
+    _GRIPPER_TCP_OFFSET = np.array([-0.01103445, -0.00021821, -0.104416])
+    _IK_MAX_ITERS = 200
+    _IK_TOL = 1e-3  # metres — tight enough for a 2cm cube, loose enough to exit in a few iterations
+    _IK_DAMPING = 0.01
+    _IK_STEP_SCALE = 0.8
+    # Position-only IK approached at a shallow diagonal, hitting the table
+    # with the wrist housing above the actual target. Regularizing toward a
+    # top-down orientation fixes it. See docs/decisions.md.
+    _IK_DOWN_WORLD = np.array([0.0, 0.0, -1.0])
+    _IK_ORIENT_WEIGHT = 0.02
+
     def __init__(self, config_path: str | Path | None = None, seed: int | None = None):
         self._config_path = Path(config_path) if config_path else _default_config_path()
         self._rng = np.random.default_rng(seed)
         self._model: mujoco.MjModel | None = None
         self._data: mujoco.MjData | None = None
+        self._ik_scratch: mujoco.MjData | None = None
         self._renderer: mujoco.Renderer | None = None
+        self._scene_path: Path | None = None
         self._n_substeps = 1
         self._qpos_adr = np.zeros(len(JOINT_NAMES), dtype=int)
+        self._dof_adr = np.zeros(len(JOINT_NAMES) - 1, dtype=int)
         self._actuator_id = np.zeros(len(JOINT_NAMES), dtype=int)
         self._joint_range = np.zeros((len(JOINT_NAMES), 2))
+        self._gripper_body_id = 0
         self._cube_qpos_adr = 0
         self._cube_half_size = 0.01
         self._cube_area_half_extent = np.zeros(2)
@@ -106,6 +125,7 @@ class MuJoCoBackend(RobotBackend):
     def connect(self) -> None:
         config = _load_config(self._config_path)
         scene_path = _repo_root() / config["scene_path"]
+        self._scene_path = scene_path
 
         render_shape = (config["render_height"], config["render_width"], 3)
         if render_shape != IMAGE_SHAPE:
@@ -117,6 +137,7 @@ class MuJoCoBackend(RobotBackend):
         self._model = mujoco.MjModel.from_xml_path(str(scene_path))
         self._model.opt.timestep = config["physics_timestep"]
         self._data = mujoco.MjData(self._model)
+        self._ik_scratch = mujoco.MjData(self._model)
         self._renderer = mujoco.Renderer(
             self._model, height=config["render_height"], width=config["render_width"]
         )
@@ -130,15 +151,17 @@ class MuJoCoBackend(RobotBackend):
             self._qpos_adr[i] = self._model.jnt_qposadr[joint_id]
             self._actuator_id[i] = actuator_id
             self._joint_range[i] = self._model.jnt_range[joint_id]
-        # Gripper joint (last row): empirically verified (mesh-to-mesh proximity,
-        # not assumed) that its *max* is the closed position and its *min* is
-        # open — opposite of schema's 0=closed/100=open, so the two ends swap
-        # in _schema_to_joint_gripper/_joint_to_schema_gripper below.
+            if i < len(self._dof_adr):  # arm joints only, gripper excluded
+                self._dof_adr[i] = self._model.jnt_dofadr[joint_id]
+        # Gripper joint (last row): min=closed (~6mm gap), max=open (~141mm)
+        # — matches schema's 0=closed/100=open directly, no reversal needed
+        # in _schema_to_joint_gripper/_joint_to_schema_gripper below. See
+        # docs/decisions.md.
         for camera in CAMERA_KEYS:
             self._mj_id(mujoco.mjtObj.mjOBJ_CAMERA, camera, scene_path)
 
-        gripper_body_id = self._mj_id(mujoco.mjtObj.mjOBJ_BODY, "gripper", scene_path)
-        self._cube_home_center = self._data.xpos[gripper_body_id][:2].copy()
+        self._gripper_body_id = self._mj_id(mujoco.mjtObj.mjOBJ_BODY, "gripper", scene_path)
+        self._cube_home_center = self._data.xpos[self._gripper_body_id][:2].copy()
 
         cube_body_id = self._mj_id(mujoco.mjtObj.mjOBJ_BODY, "cube", scene_path)
         self._cube_qpos_adr = self._model.jnt_qposadr[self._model.body_jntadr[cube_body_id]]
@@ -195,6 +218,83 @@ class MuJoCoBackend(RobotBackend):
             self._renderer = None
         self._model = None
         self._data = None
+        self._ik_scratch = None
+
+    def get_body_pose(self, name: str) -> tuple[np.ndarray, np.ndarray]:
+        """Ground-truth world-frame (position, quaternion[wxyz]) of any named
+        body — e.g. "cube" or "bin". Sim-only: real hardware has no
+        equivalent, this is exactly the perception problem it would need to
+        solve instead."""
+        if self._data is None or self._scene_path is None:
+            raise RuntimeError("connect() not called")
+        body_id = self._mj_id(mujoco.mjtObj.mjOBJ_BODY, name, self._scene_path)
+        return self._data.xpos[body_id].copy(), self._data.xquat[body_id].copy()
+
+    def solve_ik(self, target_pos: np.ndarray, seed: np.ndarray | None = None) -> np.ndarray:
+        """Damped-least-squares IK: arm-joint radians (JOINT_NAMES[:-1])
+        bringing the gripper's tool-centre-point (_GRIPPER_TCP_OFFSET) to a
+        world-frame Cartesian target, softly regularized toward a top-down
+        orientation.
+
+        wrist_roll is held at 0, not solved — free, it drifts between solves
+        for the same target and swings the offset fingertip sideways. The
+        remaining 4 DOF resolve redundancy via minimal movement from `seed`.
+
+        Runs on a scratch MjData; never disturbs the live simulation.
+        Sim-only: real hardware has no ground-truth Jacobian to solve with.
+        """
+        if self._model is None or self._data is None or self._ik_scratch is None:
+            raise RuntimeError("connect() not called")
+        scratch = self._ik_scratch
+        scratch.qpos[:] = self._data.qpos
+        scratch.qpos[self._qpos_adr[4]] = 0.0  # wrist_roll, fixed
+        q = (
+            self._data.qpos[self._qpos_adr[:4]].copy()
+            if seed is None
+            else np.asarray(seed, dtype=np.float64)[:4].copy()
+        )
+        # Margin keeps a limit-hugging solution valid after the float32 cast
+        # send_action()/schema expect — float64-exact clipping can round back
+        # outside jnt_range once narrowed to float32.
+        margin = 1e-3
+        lo = self._joint_range[:4, 0] + margin
+        hi = self._joint_range[:4, 1] - margin
+        dof_adr = self._dof_adr[:4]
+        approach_local = self._GRIPPER_TCP_OFFSET / np.linalg.norm(self._GRIPPER_TCP_OFFSET)
+        ow = self._IK_ORIENT_WEIGHT
+        jacp = np.zeros((3, self._model.nv))
+        jacr = np.zeros((3, self._model.nv))
+        for _ in range(self._IK_MAX_ITERS):
+            scratch.qpos[self._qpos_adr[:4]] = q
+            mujoco.mj_forward(self._model, scratch)
+            rot = scratch.xmat[self._gripper_body_id].reshape(3, 3)
+            tcp_pos = scratch.xpos[self._gripper_body_id] + rot @ self._GRIPPER_TCP_OFFSET
+            pos_error = target_pos - tcp_pos
+            # Orientation is a soft regularizer (biases the redundant DOF, not
+            # a hard target) — an exact-zero tilt residual isn't guaranteed to
+            # exist, so only position gates convergence.
+            orient_error = np.cross(rot @ approach_local, self._IK_DOWN_WORLD)
+            if np.linalg.norm(pos_error) < self._IK_TOL:
+                break
+            mujoco.mj_jac(self._model, scratch, jacp, jacr, tcp_pos, self._gripper_body_id)
+            j = np.vstack([jacp[:, dof_adr], ow * jacr[:, dof_adr]])
+            error = np.concatenate([pos_error, ow * orient_error])
+            damped = j @ j.T + (self._IK_DAMPING**2) * np.eye(6)
+            q = np.clip(q + self._IK_STEP_SCALE * (j.T @ np.linalg.solve(damped, error)), lo, hi)
+        else:
+            scratch.qpos[self._qpos_adr[:4]] = q
+            mujoco.mj_forward(self._model, scratch)
+            rot = scratch.xmat[self._gripper_body_id].reshape(3, 3)
+            tcp_pos = scratch.xpos[self._gripper_body_id] + rot @ self._GRIPPER_TCP_OFFSET
+            residual_mm = np.linalg.norm(target_pos - tcp_pos) * 1000
+            warnings.warn(
+                f"solve_ik: no convergence within {self._IK_MAX_ITERS} iterations "
+                f"({residual_mm:.1f}mm residual) for target {target_pos} — often a "
+                "joint-limit saturation (see docs/decisions.md), not a transient "
+                "numerical issue.",
+                stacklevel=2,
+            )
+        return np.array([*q, 0.0])
 
     def launch_interactive_viewer(self) -> None:
         """Opens MuJoCo's interactive viewer on the connected scene for manual
@@ -221,11 +321,11 @@ class MuJoCoBackend(RobotBackend):
     def _schema_to_joint_gripper(self, value: float) -> float:
         lo, hi = self._joint_range[-1]
         frac_open = (value - GRIPPER_MIN) / (GRIPPER_MAX - GRIPPER_MIN)
-        return hi - frac_open * (hi - lo)
+        return lo + frac_open * (hi - lo)
 
     def _joint_to_schema_gripper(self, joint_value: float) -> float:
         lo, hi = self._joint_range[-1]
-        frac_open = (hi - joint_value) / (hi - lo)
+        frac_open = (joint_value - lo) / (hi - lo)
         return frac_open * (GRIPPER_MAX - GRIPPER_MIN) + GRIPPER_MIN
 
     def _mj_id(self, objtype: mujoco.mjtObj, name: str, scene_path: Path) -> int:
