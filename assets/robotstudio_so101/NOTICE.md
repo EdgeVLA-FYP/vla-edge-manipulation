@@ -22,21 +22,7 @@ needed and are not vendored.
   not a MuJoCo camera sensor. Mount pose chosen empirically (best framing of
   6 axis-aligned candidates), not a verified optical calibration — re-check
   against the real wrist camera once hardware arrives.
-- `so101_new_calib_camera.xml`: added two small supplementary collision
-  boxes (`fixed_jaw_pad`, `moving_jaw_pad`), one at each jaw's fingertip,
-  with higher-friction material and stiff contact parameters
-  (`solref`/`solimp`) than the bare mesh. The vendored jaws are thin,
-  near-pointed tips with a very large single-jaw sweep; without a pad,
-  IK-driven grasp attempts on a small cube only ever produced a glancing
-  top-corner contact that couldn't survive a lift (see docs/decisions.md,
-  which also covers the MuJoCo contact-solver settings in `so101.xml` this
-  pairs with). Pad size/position (2.5mm box) matches a published, tested
-  SO-101-in-MuJoCo grasping setup (github.com/ggand0/pick-101), not a guess.
-  This represents a real, common practical modification (rubber grip pads)
-  a builder would add before running pick-place on the real gripper — not a
-  purely simulated shortcut — but it has **not** been validated against real
-  hardware; re-check pad size/position/friction once the physical gripper is
-  available, or remove this modification if real grip pads aren't fitted.
+- `so101_new_calib_camera.xml`: added two small supplementary collision boxes (`fixed_jaw_pad`, `moving_jaw_pad`), one at each jaw's fingertip, with higher-friction material and stiff contact parameters (`solref`/`solimp`) than the bare mesh. The vendored jaws are thin, near-pointed tips with a very large single-jaw sweep; without a pad, IK-driven grasp attempts on a small cube only ever produced a glancing top-corner contact that couldn't survive a lift (see docs/decisions.md, which also covers the MuJoCo contact-solver settings in `so101.xml` this pairs with). Pad size/position (2.5mm box) matches a published, tested SO-101-in-MuJoCo grasping setup (github.com/ggand0/pick-101), not a guess. This represents a real, common practical modification (rubber grip pads) a builder would add before running pick-place on the real gripper — not a purely simulated shortcut — but it has **not** been validated against real hardware; re-check pad size/position/friction once the physical gripper is available, or remove this modification if real grip pads aren't fitted.
 - `meshes/*.stl`: unmodified.
 
 ## Not vendored from upstream
