@@ -240,6 +240,10 @@ class MuJoCoBackend(RobotBackend):
         for the same target and swings the offset fingertip sideways. The
         remaining 4 DOF resolve redundancy via minimal movement from `seed`.
 
+        If position doesn't converge, retries with orientation relaxed
+        before giving up; still warns (`UserWarning`) and returns a
+        best-effort solution if that fails too — never raises.
+
         Runs on a scratch MjData; never disturbs the live simulation.
         Sim-only: real hardware has no ground-truth Jacobian to solve with.
         """
@@ -252,17 +256,10 @@ class MuJoCoBackend(RobotBackend):
         )
         q, converged, residual = self._solve_ik_dls(target_pos, q_seed, self._IK_ORIENT_WEIGHT)
         if not converged:
-            # Near a joint limit, the orientation regularizer can fight the
-            # position solve to a standstill (see docs/decisions.md). Retry
-            # with it progressively relaxed rather than dropped immediately:
-            # dropping it straight to 0 lets the redundant DOF drift to a
-            # different configuration that still satisfies position but
-            # measurably hurt task success (confirmed by a paired same-seed
-            # test) — halving it first converges just as well for most
-            # cases while staying close to the original solution; only the
-            # harder residual cases escalate to fully position-only.
-            # Doesn't affect the common case: only reached when the first,
-            # fully-oriented solve already failed.
+            # Relax the orientation regularizer progressively rather than
+            # dropping it straight to 0 — that lets the redundant DOF settle
+            # on a worse configuration (see docs/decisions.md). Only reached
+            # when the default, fully-oriented solve already failed.
             for orient_weight in (self._IK_ORIENT_WEIGHT / 2, 0.0):
                 q, converged, residual = self._solve_ik_dls(target_pos, q_seed, orient_weight)
                 if converged:

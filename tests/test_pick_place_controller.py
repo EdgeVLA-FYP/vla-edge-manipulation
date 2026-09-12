@@ -2,11 +2,10 @@
 
 Grasp success is measured, not asserted here: 94/100 (94%,
 `scripts/measure_pickplace_success.sh`), up from a confirmed 77/100
-baseline, via a `solve_ik()` reachability fix documented (with the paired
-same-seed analysis behind the number) in docs/decisions.md. Still noisy
-and not yet reliable enough to gate CI on. These tests instead guard the
-parts that are actually correct and stable: the controller runs to
-completion without error and only ever emits schema-valid actions.
+baseline — see docs/decisions.md for the fix history. Still noisy and not
+yet reliable enough to gate CI on. These tests instead guard the parts
+that are actually correct and stable: the controller runs to completion
+without error and only ever emits schema-valid actions.
 """
 
 import numpy as np
